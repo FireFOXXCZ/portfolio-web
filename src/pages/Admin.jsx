@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, FolderKanban, ShoppingBag, Trash2, Plus, Loader2, Pencil, Home, X, AlertTriangle, Save, Search, Upload, ChevronLeft, ChevronRight, AtSign, Folder, FolderPlus, Inbox, Archive, Clock, CheckSquare, GripVertical, CheckCircle2, Eye, CheckCheck, RefreshCw, Star, ThumbsUp, ThumbsDown, Menu, Briefcase } from 'lucide-react'
+import { LogOut, FolderKanban, ShoppingBag, Trash2, Plus, Loader2, Pencil, Home, X, AlertTriangle, Save, Search, Upload, ChevronLeft, ChevronRight, AtSign, Folder, FolderPlus, Inbox, Archive, Clock, CheckSquare, GripVertical, CheckCircle2, Eye, CheckCheck, RefreshCw, Star, ThumbsUp, ThumbsDown, Menu, Briefcase, ArrowUp } from 'lucide-react'
 
 export default function Admin() {
   const navigate = useNavigate()
@@ -19,7 +19,7 @@ export default function Admin() {
   const [filterStatus, setFilterStatus] = useState('all') 
   const [currentPage, setCurrentPage] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
-  const ITEMS_PER_PAGE = 5
+  const ITEMS_PER_PAGE = activeTab === 'services' ? 10 : 5 // Pro tabulku zobrazíme více položek
 
   // POČÍTADLA & UI
   const [unreadCounts, setUnreadCounts] = useState({})      
@@ -137,7 +137,6 @@ export default function Admin() {
     if (activeTab === 'messages') {
         if (!activeFolderId) { setLoading(false); return }
         
-        // Načítáme i název produktu (služby)
         query = supabase.from('messages')
             .select('*, products(name)', { count: 'exact' })
             .eq('folder_id', activeFolderId)
@@ -153,8 +152,19 @@ export default function Admin() {
         query = query.order('is_approved', { ascending: true }).order('created_at', { ascending: false })
 
     } else {
+        // --- PROJEKTY A SLUŽBY ---
         const table = activeTab === 'services' ? 'products' : 'projects'
-        query = supabase.from(table).select('*', { count: 'exact' }).order('created_at', { ascending: false })
+        query = supabase.from(table).select('*', { count: 'exact' })
+
+        // Řazení
+        if (activeTab === 'services') {
+            // SLUŽBY: Od nejlevnějšího (price ASC)
+            query = query.order('price', { ascending: true })
+        } else {
+            // PROJEKTY: Od nejnovějšího
+            query = query.order('created_at', { ascending: false })
+        }
+
         if (searchTerm) {
             if (activeTab === 'services') query = query.ilike('name', `%${searchTerm}%`)
             else query = query.ilike('title', `%${searchTerm}%`)
@@ -209,7 +219,7 @@ export default function Admin() {
       }
   }
 
-  // --- MAZÁNÍ (OPRAVENO: Kontrola chyb před smazáním z UI) ---
+  // --- MAZÁNÍ ---
   async function executeDel() {
       if (!itemToDelete) return;
       
@@ -218,15 +228,12 @@ export default function Admin() {
       if (activeTab === 'services') table = 'products';
       if (activeTab === 'reviews') table = 'reviews';
 
-      // 1. Zkusíme smazat z DB
       const { error } = await supabase.from(table).delete().eq('id', itemToDelete.id)
       
       if (error) {
-          // 2. Pokud chyba, zobrazíme ji červeně a NIC nemažeme z UI
           console.error("Chyba při mazání:", error)
           showToast("Chyba: " + error.message, 'error')
       } else {
-          // 3. Pokud úspěch, smažeme z UI
           setItems(prev => prev.filter(item => item.id !== itemToDelete.id))
           showToast("Položka smazána", 'success')
           setRefreshTrigger(prev => prev + 1)
@@ -251,7 +258,6 @@ export default function Admin() {
   const handleDragLeaveFolder = (e) => { setDragOverFolderId(null) }
   const handleDropOnFolder = async (e, targetFolderId) => { e.preventDefault(); setDragOverFolderId(null); if (!draggedMessage) return; setItems(items.filter(item => item.id !== draggedMessage.id)); await supabase.from('messages').update({ folder_id: targetFolderId }).eq('id', draggedMessage.id); fetchUnreadCounts(); setDraggedMessage(null); setRefreshTrigger(prev => prev + 1) }
   
-  // Opravený Toast s podporou typu (error/success)
   const showToast = (msg, type = 'success') => { setToast({ show: true, message: msg, type }); setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000) }
   
   const copyToClipboard = (text) => { navigator.clipboard.writeText(text); showToast(`Zkopírováno: ${text}`) }
@@ -268,14 +274,12 @@ export default function Admin() {
   const openAdd = () => { setFormData(initialFormState); setTagInput(''); setIsEditing(false); setIsFormOpen(true) }
   const openEdit = (item) => { setIsEditing(true); setTagInput(''); setIsFormOpen(true); const images = item.images?.length ? item.images : (item.image_url ? [item.image_url] : []); setFormData({ id: item.id, title: item.name || item.title, price: item.price, description: item.description, images, tags: item.tags || [] }) }
   
-  // OPRAVENO: Ukládání ceny jako textu (bez Number())
   const handleSave = async (e) => { 
       e.preventDefault(); 
       setIsSubmitting(true); 
       const table = activeTab === 'services' ? 'products' : 'projects'; 
-      // ZDE: price je nyní brána jako text přímo z formData
       const payload = activeTab === 'services' 
-        ? { name: formData.title, price: formData.price, description: formData.description } 
+        ? { name: formData.title, price: formData.price, description: formData.description, tags: formData.tags } 
         : { title: formData.title, description: formData.description, images: formData.images, image_url: formData.images[0]||null, tags: formData.tags }; 
       
       const q = isEditing ? supabase.from(table).update(payload).eq('id', formData.id) : supabase.from(table).insert([payload]); 
@@ -285,7 +289,6 @@ export default function Admin() {
           setIsFormOpen(false); 
           setRefreshTrigger(prev => prev + 1) 
       } else { 
-          // Error zobrazíme v toastu
           showToast(error.message, 'error')
       } 
       setIsSubmitting(false) 
@@ -441,7 +444,6 @@ export default function Admin() {
                                     </div>
                                 </div>
 
-                                {/* ZOBRAZENÍ SLUŽBY (BADGE) */}
                                 <div className="md:ml-auto mt-2 md:mt-0 flex flex-wrap gap-2 items-center">
                                     {msg.products?.name ? (
                                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-bold border border-blue-500/20">
@@ -465,7 +467,64 @@ export default function Admin() {
                     </div>
                 ))}
             </div>
+        ) : activeTab === 'services' ? (
+            // --- NOVÁ TABULKA PRO SLUŽBY ---
+            <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#1e293b]/40 backdrop-blur-xl animate-in fade-in duration-500 slide-in-from-bottom-4">
+                <table className="w-full text-left text-sm text-slate-400">
+                    <thead className="bg-white/5 text-xs uppercase font-bold text-slate-300">
+                        <tr>
+                            <th className="px-6 py-4 tracking-wider">Název služby</th>
+                            <th className="px-6 py-4 tracking-wider hidden md:table-cell">Tagy</th>
+                            <th className="px-6 py-4 text-right tracking-wider cursor-pointer hover:text-white transition flex items-center justify-end gap-2">
+                                Cena <ArrowUp className="w-3 h-3 text-indigo-400"/>
+                            </th>
+                            <th className="px-6 py-4 text-right tracking-wider w-32">Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                        {items.map(item => (
+                            <tr key={item.id} className="group hover:bg-white/[0.02] transition-colors">
+                                <td className="px-6 py-4">
+                                    <div className="font-bold text-white text-base">{item.name}</div>
+                                    {item.description && (
+                                        <div className="text-xs text-slate-500 mt-1 line-clamp-1 max-w-xs">{item.description}</div>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4 hidden md:table-cell">
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {item.tags && item.tags.length > 0 ? (
+                                            item.tags.map((tag, i) => (
+                                                <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                                                    {tag}
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className="text-slate-600 text-xs italic">Žádné tagy</span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <div className="font-bold text-white whitespace-nowrap bg-white/5 px-3 py-1 rounded-lg inline-block border border-white/5 group-hover:border-indigo-500/30 group-hover:text-indigo-200 transition">
+                                        {item.price ? item.price : 'Dohodou'}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <div className="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition">
+                                        <button onClick={() => openEdit(item)} className="p-2 hover:bg-indigo-500/20 hover:text-indigo-400 rounded-lg transition" title="Upravit">
+                                            <Pencil className="w-4 h-4"/>
+                                        </button>
+                                        <button onClick={() => confirmDel(item)} className="p-2 hover:bg-red-500/20 hover:text-red-400 rounded-lg transition" title="Smazat">
+                                            <Trash2 className="w-4 h-4"/>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         ) : (
+            // --- GRID PROJEKTŮ ---
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
                 {items.map(item => { 
                     let thumb = null; if (activeTab === 'projects') { const gallery = item.images || (item.image_url ? [item.image_url] : []); thumb = gallery[0] }
@@ -510,11 +569,19 @@ export default function Admin() {
                             <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition text-lg font-medium placeholder:text-slate-600"/>
                         </div>
                         {activeTab === 'services' ? (
-                            <div className="space-y-2 md:col-span-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Cena (Kč)</label>
-                                {/* OPRAVENO: type="text" pro možnost zadání rozsahu */}
-                                <input type="text" required value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition font-mono text-lg" placeholder="např. 4 500 - 7 000"/>
-                            </div>
+                            <>
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Cena (Kč)</label>
+                                    <input type="text" required value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition font-mono text-lg" placeholder="např. 4 500 - 7 000"/>
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Tagy</label>
+                                    <div className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-3 flex flex-wrap gap-2 items-center min-h-[60px] focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">
+                                        {formData.tags.map((tag, index) => (<span key={index} className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 font-medium">{tag}<button type="button" onClick={() => removeTag(tag)} className="hover:text-white"><X className="w-3 h-3"/></button></span>))}
+                                        <input type="text" placeholder="Nový tag (Enter)..." value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (tagInput.trim()) { setFormData({...formData, tags: [...formData.tags, tagInput.trim()]}); setTagInput('') } } }} className="bg-transparent outline-none text-white flex-1 h-8 placeholder:text-slate-600"/>
+                                    </div>
+                                </div>
+                            </>
                         ) : (
                             <>
                                 <div className="space-y-2 md:col-span-2">
@@ -551,10 +618,9 @@ export default function Admin() {
         </div>
       )}
 
-      {/* --- OSTATNÍ MODALY (DELETE, LIGHTBOX, TOAST) --- */}
+      {/* --- OSTATNÍ MODALY --- */}
       {isDeleteOpen && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setIsDeleteOpen(false)}></div><div className="bg-[#1e293b] border border-white/10 rounded-3xl w-full max-w-sm relative z-10 shadow-2xl p-8 text-center animate-in zoom-in-95 duration-200 ring-1 ring-white/10"><div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 ring-4 ring-red-500/5"><AlertTriangle className="w-10 h-10"/></div><h3 className="text-2xl font-bold mb-3 text-white">Opravdu smazat?</h3><p className="text-slate-400 mb-8 leading-relaxed">Tato akce je nevratná a položka bude trvale odstraněna z databáze.</p><div className="flex gap-4 justify-center"><button onClick={() => setIsDeleteOpen(false)} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-bold transition border border-white/5">Zrušit</button><button onClick={executeDel} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition shadow-lg shadow-red-500/20 transform hover:scale-105">Smazat navždy</button></div></div></div>)}
       
-      {/* TOAST NOTIFIKACE (Upraveno pro zobrazení chyby) */}
       {toast.show && (
         <div className={`fixed bottom-10 right-10 border px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-[60] animate-in slide-in-from-right-10 fade-in duration-300 ${toast.type === 'error' ? 'bg-[#1e293b] border-red-500/30' : 'bg-[#1e293b] border-white/10'}`}>
             <div className={`${toast.type === 'error' ? 'bg-red-500/20 text-red-400 border-red-500/20' : 'bg-green-500/20 text-green-400 border-green-500/20'} p-2 rounded-full border`}>

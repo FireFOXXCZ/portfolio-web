@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
-import { Code2, ChevronLeft, ChevronRight, Check, Sparkles } from 'lucide-react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, Sparkles, Code2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 export default function Services() {
   const [products, setProducts] = useState([])
@@ -11,7 +11,7 @@ export default function Services() {
 
   // --- NASTAVENÍ STRÁNKOVÁNÍ ---
   const [currentPage, setCurrentPage] = useState(1)
-  const ITEMS_PER_PAGE = 3
+  const ITEMS_PER_PAGE = 3 
 
   useEffect(() => {
     getProducts()
@@ -58,7 +58,7 @@ export default function Services() {
         </div>
         
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[1,2,3].map(i => (
               <div key={i} className="h-[500px] rounded-3xl bg-white/5 animate-pulse border border-white/5"></div>
             ))}
@@ -67,43 +67,54 @@ export default function Services() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {currentProducts.map((product) => (
-                <div key={product.id} className="group relative flex flex-col h-full bg-[#1e293b]/40 backdrop-blur-sm border border-white/5 rounded-3xl p-8 hover:border-blue-500/30 transition-all duration-300 hover:shadow-[0_0_40px_-10px_rgba(59,130,246,0.15)] hover:-translate-y-2 overflow-hidden">
+                <div key={product.id} className="group relative flex flex-col h-full bg-[#0f172a] border border-white/10 rounded-3xl p-8 hover:border-blue-500/50 transition-all duration-300 hover:shadow-[0_0_50px_-10px_rgba(59,130,246,0.15)] hover:-translate-y-2 overflow-hidden">
                   
                   {/* Dekorace na pozadí */}
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/5 rounded-full blur-3xl -mr-10 -mt-10 transition group-hover:bg-blue-500/10"></div>
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl -mr-20 -mt-20 transition group-hover:bg-blue-600/10 pointer-events-none"></div>
                   
                   {/* Hlavička karty */}
-                  <div className="mb-6 relative z-10">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center mb-6 text-blue-400 border border-white/5 group-hover:scale-110 transition duration-300 shadow-inner">
-                        <Code2 className="w-6 h-6" />
+                  <div className="mb-6 relative z-10 flex-1 flex flex-col">
+                      <div className="flex items-center gap-4 mb-6">
+                          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
+                            <Code2 className="w-5 h-5" />
+                          </div>
                       </div>
+
+                      <h3 className="text-2xl font-bold text-white mb-4 tracking-tight group-hover:text-blue-400 transition">{product.name}</h3>
                       
-                      {/* Vykreslení TAGŮ (pokud existují) */}
+                      <p className="text-slate-400 text-sm leading-relaxed mb-8 border-l-2 border-white/5 pl-4">
+                        {product.description || "Kompletní řešení na míru."}
+                      </p>
+
+                      {/* --- TAGY --- */}
                       {product.tags && product.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-4">
+                          <div className="flex flex-wrap gap-2 mt-auto">
                               {product.tags.map((tag, i) => (
-                                  <span key={i} className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md bg-white/5 text-slate-400 border border-white/5">
+                                  <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/5 text-slate-400 border border-white/10 group-hover:border-blue-500/30 group-hover:text-slate-200 transition-colors">
                                       {tag}
                                   </span>
                               ))}
                           </div>
                       )}
-
-                      <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-blue-400 transition">{product.name}</h3>
-                      <p className="text-slate-400 text-sm leading-relaxed">
-                        {product.description || "Kompletní řešení na míru."}
-                      </p>
                   </div>
                   
                   {/* Cena a patička */}
-                  <div className="mt-auto pt-8 border-t border-white/5 relative z-10">
-                    <div className="mb-6">
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Cena balíčku</p>
-                        <div className="flex items-baseline gap-2 flex-wrap">
-                            {/* Změna: whitespace-nowrap zabrání rozlomení ceny */}
-                            <span className="text-3xl font-bold text-white whitespace-nowrap">{product.price}</span>
-                            {/* Zobrazíme text za cenou jen pokud to dává smysl */}
-                            {/\d/.test(product.price) && <span className="text-sm text-slate-500 font-medium">/ projekt</span>}
+                  <div className="mt-8 pt-8 border-t border-white/10 relative z-10">
+                    <div className="mb-8">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Celková investice</p>
+                        
+                        {/* --- CENA (ZMENŠENO PÍSMO) --- */}
+                        <div className="flex flex-row items-baseline gap-1.5 flex-nowrap overflow-hidden">
+                            {/* Změna: text-2xl a na velkých monitorech xl:text-3xl */}
+                            <span className="text-2xl xl:text-3xl font-extrabold text-white tracking-tight whitespace-nowrap shadow-black drop-shadow-sm">
+                                {product.price}
+                            </span>
+                            
+                            {/\d/.test(product.price) && (
+                                <span className="text-xs text-slate-500 font-medium whitespace-nowrap shrink-0">
+                                    / projekt
+                                </span>
+                            )}
                         </div>
                     </div>
                     
@@ -115,10 +126,10 @@ export default function Services() {
                                 if (element) element.scrollIntoView({ behavior: 'smooth' });
                             }, 100);
                         }}
-                        className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2 group/btn"
+                        className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-base shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2 group/btn"
                     >
                       Mám zájem
-                      <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition" />
+                      <ChevronRight className="w-5 h-5 group-hover/btn:translate-x-1 transition" />
                     </button>
                   </div>
                 </div>
@@ -126,13 +137,27 @@ export default function Services() {
             </div>
 
             {/* STRÁNKOVÁNÍ */}
-            {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-6 mt-16">
-                    <button onClick={prevPage} disabled={currentPage === 1} className="p-4 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5 backdrop-blur-sm"><ChevronLeft className="w-5 h-5" /></button>
-                    <span className="text-slate-400 font-mono text-sm tracking-widest">STRANA <span className="text-white font-bold">{currentPage}</span> / {totalPages}</span>
-                    <button onClick={nextPage} disabled={currentPage === totalPages} className="p-4 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5 backdrop-blur-sm"><ChevronRight className="w-5 h-5" /></button>
-                </div>
-            )}
+            <div className="flex justify-center items-center gap-6 mt-20">
+                <button 
+                    onClick={prevPage} 
+                    disabled={currentPage === 1} 
+                    className="p-4 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition text-white border border-white/5 backdrop-blur-sm"
+                >
+                    <ChevronLeft className="w-5 h-5" />
+                </button>
+                
+                <span className="text-slate-400 font-mono text-sm tracking-widest">
+                    STRANA <span className="text-white font-bold">{currentPage}</span> / {totalPages}
+                </span>
+                
+                <button 
+                    onClick={nextPage} 
+                    disabled={currentPage === totalPages} 
+                    className="p-4 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition text-white border border-white/5 backdrop-blur-sm"
+                >
+                    <ChevronRight className="w-5 h-5" />
+                </button>
+            </div>
           </>
         )}
     </section>
