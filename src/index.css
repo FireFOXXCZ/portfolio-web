@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tmavé pozadí pro celou stránku */
+body {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
