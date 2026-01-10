@@ -1,25 +1,51 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
-import { Send, CheckCircle2, Loader2, Mail, MapPin } from 'lucide-react'
+import { Send, CheckCircle2, Loader2, Mail, MapPin, Briefcase } from 'lucide-react'
+import { useLocation } from 'react-router-dom' // Pro čtení URL parametrů
 
 export default function Contact() {
-  const [formData, setFormData] = useState({ name: '', email: '', message: '' })
+  const [formData, setFormData] = useState({ name: '', email: '', message: '', serviceId: '' })
+  const [services, setServices] = useState([]) // Seznam služeb z DB
   const [status, setStatus] = useState('idle') // idle | loading | success | error
+  
+  const location = useLocation()
+
+  // 1. Načtení služeb z databáze a kontrola URL
+  useEffect(() => {
+    async function fetchServices() {
+        // Načteme služby (potřebujeme ID a název)
+        const { data } = await supabase.from('products').select('id, name')
+        if (data) {
+            setServices(data)
+            
+            // Zkontrolujeme URL, jestli jsme nepřišli z tlačítka "Mám zájem"
+            // Hledáme parametr ?service=ID
+            const params = new URLSearchParams(location.search)
+            const preselectedId = params.get('service')
+            
+            if (preselectedId) {
+                // Pokud ID existuje v URL, nastavíme ho do formuláře
+                setFormData(prev => ({ ...prev, serviceId: preselectedId }))
+            }
+        }
+    }
+    fetchServices()
+  }, [location])
 
   async function handleSubmit(e) {
     e.preventDefault()
     setStatus('loading')
 
-    // --- OPRAVA ZDE ---
-    // Musíme zprávě říct, do jaké složky patří (zde natvrdo ID 1 = Inbox).
-    // Pokud ID 1 v tabulce 'folders' neexistuje, zpráva se neodešle.
+    // Data pro odeslání
     const messageData = {
-      ...formData,
-      folder_id: 1, // DŮLEŽITÉ: Tady nastavujeme složku
-      is_read: false // Pro jistotu nastavíme explicitně jako nepřečtené
+      name: formData.name,
+      email: formData.email,
+      message: formData.message,
+      service_id: formData.serviceId || null, // Uložíme ID vybrané služby (nebo null)
+      folder_id: 1, // Inbox (natvrdo ID 1, ujisti se, že složka s ID 1 existuje v tabulce 'folders')
+      is_read: false
     }
 
-    // Odeslání do Supabase
     const { error } = await supabase
       .from('messages')
       .insert([messageData])
@@ -30,7 +56,8 @@ export default function Contact() {
       setStatus('error')
     } else {
       setStatus('success')
-      setFormData({ name: '', email: '', message: '' }) // Vyčistit formulář
+      // Vyčistíme formulář
+      setFormData({ name: '', email: '', message: '', serviceId: '' })
       
       // Reset tlačítka po 3 sekundách
       setTimeout(() => setStatus('idle'), 3000)
@@ -74,6 +101,31 @@ export default function Contact() {
 
           {/* Pravá strana: Formulář */}
           <form onSubmit={handleSubmit} className="space-y-4 bg-[#1e293b]/30 p-8 rounded-3xl border border-white/5 backdrop-blur-md shadow-2xl">
+            
+            {/* Výběr služby (NOVÉ) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2 pl-1">Služba (Nepovinné)</label>
+              <div className="relative">
+                  <Briefcase className="absolute left-4 top-4 w-5 h-5 text-slate-500 pointer-events-none"/>
+                  <select 
+                    value={formData.serviceId}
+                    onChange={e => setFormData({...formData, serviceId: e.target.value})}
+                    className="w-full bg-[#0f172a]/50 border border-white/10 rounded-xl py-4 pl-12 pr-4 focus:border-blue-500 focus:outline-none text-white appearance-none cursor-pointer hover:bg-[#0f172a]/70 transition"
+                  >
+                    <option value="">Nevybráno / Obecný dotaz</option>
+                    {services.map(service => (
+                        <option key={service.id} value={service.id}>
+                            {service.name}
+                        </option>
+                    ))}
+                  </select>
+                  {/* Šipka dolů pro select */}
+                  <div className="absolute right-4 top-4 pointer-events-none text-slate-500">
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                  </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-2 pl-1">Jméno</label>
               <input 

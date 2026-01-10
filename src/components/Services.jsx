@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
-import { Code2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Code2, ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 export default function Services() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   
+  const navigate = useNavigate()
+  const location = useLocation()
+
   // --- NASTAVENÍ STRÁNKOVÁNÍ ---
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 3
@@ -26,12 +30,10 @@ export default function Services() {
     }
   }
 
-  // --- LOGIKA ---
+  // --- LOGIKA STRÁNKOVÁNÍ ---
   const indexOfLastItem = currentPage * ITEMS_PER_PAGE
   const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE
   const currentProducts = products.slice(indexOfFirstItem, indexOfLastItem)
-  
-  // Zajištění, že totalPages je alespoň 1, aby se nezobrazovalo "Strana 1 z 0"
   const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE) || 1
 
   const nextPage = () => { if (currentPage < totalPages) setCurrentPage(prev => prev + 1) }
@@ -39,76 +41,93 @@ export default function Services() {
 
   return (
     <section id="sluzby" className="py-32 px-6 max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-4">
-          <div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Ceník Služeb</h2>
-            <p className="text-slate-400 max-w-md">Transparentní ceny. Data načítána živě z backendu.</p>
-          </div>
-          <div className="text-right hidden md:block">
-            <p className="text-xs text-slate-500 uppercase">Backend Status</p>
-            <div className="flex items-center gap-2 text-green-400 text-sm font-bold">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-              Online
-            </div>
-          </div>
+        
+        {/* Čistší a modernější hlavička */}
+        <div className="text-center mb-20">
+           <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+             Ceník Služeb
+           </h2>
+           <p className="text-slate-400 max-w-2xl mx-auto text-lg">
+             Transparentní ceny bez skrytých poplatků. Vyberte si balíček, který nejlépe odpovídá vašim potřebám, nebo mi napište o individuální nabídku.
+           </p>
         </div>
         
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1,2,3].map(i => (
-              <div key={i} className="h-64 rounded-2xl bg-white/5 animate-pulse"></div>
+              <div key={i} className="h-96 rounded-2xl bg-white/5 animate-pulse"></div>
             ))}
           </div>
         ) : (
           <>
             {/* GRID SLUŽEB */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 min-h-[400px]">
               {currentProducts.map((product) => (
-                <div key={product.id} className="group p-8 rounded-2xl bg-[#1e293b]/50 border border-white/5 hover:border-blue-500/50 hover:bg-[#1e293b] transition duration-300 relative overflow-hidden flex flex-col h-full">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-16 -mt-16 transition group-hover:bg-blue-500/20"></div>
+                <div key={product.id} className="group p-8 rounded-3xl bg-[#1e293b]/40 border border-white/5 hover:border-blue-500/50 hover:bg-[#1e293b]/60 transition duration-300 relative overflow-hidden flex flex-col h-full shadow-2xl hover:shadow-blue-900/20 hover:-translate-y-1">
                   
-                  <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center mb-6 text-blue-400 group-hover:scale-110 transition">
-                    <Code2 />
+                  {/* Efekt na pozadí */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10 transition group-hover:bg-blue-500/20"></div>
+                  
+                  {/* Ikona */}
+                  <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-8 text-blue-400 group-hover:scale-110 transition border border-blue-500/10">
+                    <Code2 className="w-7 h-7" />
                   </div>
 
-                  <h3 className="text-xl font-bold mb-2 text-white group-hover:text-blue-400 transition">{product.name}</h3>
+                  {/* Název a Popis */}
+                  <h3 className="text-2xl font-bold mb-3 text-white group-hover:text-blue-400 transition">{product.name}</h3>
                   <p className="text-slate-400 text-sm mb-8 leading-relaxed flex-1">
-                    {product.description || "Kompletní řešení včetně nasazení."}
+                    {product.description || "Kompletní řešení na míru včetně nasazení a základní podpory."}
                   </p>
                   
-                  <div className="mt-auto border-t border-white/5 pt-6 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Cena</span>
-                      <p className="text-2xl font-bold text-white">{product.price.toLocaleString()} Kč</p>
+                  {/* Cena a Tlačítko */}
+                  <div className="mt-auto border-t border-white/5 pt-8">
+                    <div className="flex items-end gap-1 mb-6">
+                        <span className="text-3xl font-bold text-white">{product.price.toLocaleString()} Kč</span>
+                        <span className="text-slate-500 text-sm mb-1">/ projekt</span>
                     </div>
-                    <button className="px-4 py-2 rounded-lg bg-white/5 hover:bg-blue-600 text-sm font-medium transition hover:shadow-lg hover:shadow-blue-500/20">
-                      Vybrat
+                    
+                    {/* --- ZMĚNA ZDE --- */}
+                    <button 
+                        onClick={() => {
+                            // 1. Přejdeme na hlavní stránku s parametrem ?service=ID a kotvou #kontakt
+                            navigate(`/?service=${product.id}#kontakt`)
+                            
+                            // 2. Ruční scroll (pojistka, kdyby router ignoroval hash)
+                            setTimeout(() => {
+                                const element = document.getElementById('kontakt');
+                                if (element) element.scrollIntoView({ behavior: 'smooth' });
+                            }, 100);
+                        }}
+                        className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 group/btn"
+                    >
+                      Mám zájem
+                      <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition" />
                     </button>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* STRÁNKOVÁNÍ - Zobrazí se VŽDY */}
-            <div className="flex justify-center items-center gap-4 mt-12 pt-8 border-t border-white/5">
+            {/* STRÁNKOVÁNÍ */}
+            <div className="flex justify-center items-center gap-6 mt-16">
               <button 
                 onClick={prevPage} 
                 disabled={currentPage === 1}
-                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white"
+                className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5"
               >
-                <ChevronLeft className="w-6 h-6" />
+                <ChevronLeft className="w-5 h-5" />
               </button>
               
-              <span className="text-slate-400 font-mono text-sm">
-                Strana <span className="text-white font-bold">{currentPage}</span> z {totalPages}
+              <span className="text-slate-400 font-mono text-sm tracking-widest">
+                STRANA <span className="text-white font-bold">{currentPage}</span> / {totalPages}
               </span>
 
               <button 
                 onClick={nextPage} 
                 disabled={currentPage === totalPages}
-                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white"
+                className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5"
               >
-                <ChevronRight className="w-6 h-6" />
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           </>

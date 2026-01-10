@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, FolderKanban, ShoppingBag, Trash2, Plus, Loader2, Pencil, Home, X, AlertTriangle, Save, Search, Upload, ChevronLeft, ChevronRight, AtSign, Folder, FolderPlus, Inbox, Archive, Clock, CheckSquare, GripVertical, CheckCircle2, Eye, CheckCheck, RefreshCw, Star, ThumbsUp, ThumbsDown, Menu } from 'lucide-react'
+import { LogOut, FolderKanban, ShoppingBag, Trash2, Plus, Loader2, Pencil, Home, X, AlertTriangle, Save, Search, Upload, ChevronLeft, ChevronRight, AtSign, Folder, FolderPlus, Inbox, Archive, Clock, CheckSquare, GripVertical, CheckCircle2, Eye, CheckCheck, RefreshCw, Star, ThumbsUp, ThumbsDown, Menu, Briefcase } from 'lucide-react'
 
 export default function Admin() {
   const navigate = useNavigate()
@@ -71,16 +71,17 @@ export default function Admin() {
     }
     init()
 
-    // Realtime listener (jen pro notifikace a drobné aktualizace, hlavní sílu má tlačítko)
     const channel = supabase
       .channel('global-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
+          console.log('🔔 REALTIME UPDATE (Messages):', payload)
           fetchUnreadCounts()
           if (activeTab === 'messages') setRefreshTrigger(prev => prev + 1)
           if (payload.eventType === 'INSERT') showToast('Nová zpráva!')
         }
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, (payload) => {
+          console.log('🔔 REALTIME UPDATE (Reviews):', payload)
           fetchUnreadCounts()
           if (activeTab === 'reviews') setRefreshTrigger(prev => prev + 1)
           if (payload.eventType === 'INSERT') showToast('Nová recenze ke schválení!')
@@ -99,10 +100,7 @@ export default function Admin() {
       
       const isBackgroundRefresh = refreshTrigger > 0;
       
-      // 1. Načíst data seznamu
       fetchData(!isBackgroundRefresh) 
-      
-      // 2. Načíst počítadla (TOTO ZAJISTÍ, ŽE SE PŘI REFRESHI AKTUALIZUJÍ I ČÍSLA V MENU)
       fetchUnreadCounts()
 
   }, [activeTab, activeFolderId, refreshTrigger, filterStatus, currentPage, searchTerm]) 
@@ -138,7 +136,12 @@ export default function Admin() {
 
     if (activeTab === 'messages') {
         if (!activeFolderId) { setLoading(false); return }
-        query = supabase.from('messages').select('*', { count: 'exact' }).eq('folder_id', activeFolderId)
+        
+        // Načítáme i název produktu (služby)
+        query = supabase.from('messages')
+            .select('*, products(name)', { count: 'exact' })
+            .eq('folder_id', activeFolderId)
+
         if (filterStatus === 'unread') query = query.eq('is_read', false)
         if (filterStatus === 'read') query = query.eq('is_read', true)
         if (searchTerm) query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,message.ilike.%${searchTerm}%`)
@@ -199,7 +202,6 @@ export default function Admin() {
       const { error } = await supabase.from('reviews').update({ is_approved: newStatus }).eq('id', review.id)
       if (!error) {
           showToast(newStatus ? "Recenze schválena" : "Recenze skryta")
-          // Změna triggeruje refresh, ten zavolá fetchUnreadCounts
           setRefreshTrigger(p => p + 1)
       } else {
           showToast("Chyba při změně stavu")
@@ -207,27 +209,18 @@ export default function Admin() {
       }
   }
 
-  // SPOLEČNÁ MAZACÍ FUNKCE (PRO ZPRÁVY, RECENZE, PROJEKTY...)
-  async function executeDel() {
-      if (!itemToDelete) return;
-      
+  async function deleteItem(id) {
       let table = 'messages';
       if (activeTab === 'projects') table = 'projects';
       if (activeTab === 'services') table = 'products';
       if (activeTab === 'reviews') table = 'reviews';
 
-      // Odstranit z UI
-      setItems(items.filter(item => item.id !== itemToDelete.id))
+      setItems(items.filter(item => item.id !== id))
+      await supabase.from(table).delete().eq('id', id)
       
-      // Odstranit z DB
-      await supabase.from(table).delete().eq('id', itemToDelete.id)
-      
-      // Zavřít modal
       setIsDeleteOpen(false)
-      setItemToDelete(null)
-      
-      // Obnovit data (to přepočítá i čísla v sidebaru)
       setRefreshTrigger(prev => prev + 1)
+      fetchUnreadCounts()
       showToast("Položka smazána")
   }
 
@@ -257,8 +250,8 @@ export default function Admin() {
   const openEdit = (item) => { setIsEditing(true); setTagInput(''); setIsFormOpen(true); const images = item.images?.length ? item.images : (item.image_url ? [item.image_url] : []); setFormData({ id: item.id, title: item.name || item.title, price: item.price, description: item.description, images, tags: item.tags || [] }) }
   const handleSave = async (e) => { e.preventDefault(); setIsSubmitting(true); const table = activeTab === 'services' ? 'products' : 'projects'; const payload = activeTab === 'services' ? { name: formData.title, price: Number(formData.price), description: formData.description } : { title: formData.title, description: formData.description, images: formData.images, image_url: formData.images[0]||null, tags: formData.tags }; const q = isEditing ? supabase.from(table).update(payload).eq('id', formData.id) : supabase.from(table).insert([payload]); const { error } = await q; if (!error) { fetchData(); setIsFormOpen(false); setRefreshTrigger(prev => prev + 1) } else { alert(error.message) } setIsSubmitting(false) }
   
-  // PRO MAZÁNÍ (otevře modal)
   const confirmDel = (item) => { setItemToDelete(item); setIsDeleteOpen(true) }
+  const executeDel = async () => { if (!itemToDelete) return; await deleteItem(itemToDelete.id); setIsDeleteOpen(false); setItemToDelete(null) }
   
   const openLightbox = (images, index = 0) => { if (images?.length) { setLightboxImages(images); setLightboxIndex(index); setLightboxOpen(true) } }
   const nextImage = (e) => { e?.stopPropagation(); setLightboxIndex((prev) => (prev + 1) % lightboxImages.length) }
@@ -396,18 +389,38 @@ export default function Admin() {
                     <div key={msg.id} draggable={allowDrag} onDragStart={(e) => handleDragStart(e, msg)} className={`group p-0 rounded-2xl border transition-all duration-300 flex flex-col md:flex-row relative overflow-hidden ${msg.is_read ? 'bg-[#1e293b]/30 border-white/5' : 'bg-[#1e293b]/80 border-indigo-500/30 shadow-[0_0_15px_rgba(79,70,229,0.1)]'}`}>
                         <div className={`w-1 ${msg.is_read ? 'bg-transparent' : 'bg-gradient-to-b from-indigo-500 to-blue-500'}`}></div>
                         <div className="w-10 flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-600 hover:text-slate-400 hover:bg-white/5 border-r border-white/5 transition" onMouseEnter={() => setAllowDrag(true)} onMouseLeave={() => setAllowDrag(false)}><GripVertical className="w-5 h-5"/></div>
+                        
                         <div className="flex-1 p-5 z-10 min-w-0">
-                            <div className="flex items-center gap-4 mb-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${msg.is_read ? 'bg-white/5 text-slate-500' : 'bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg'}`}>{(msg.name || 'A').charAt(0).toUpperCase()}</div>
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2"><h3 className={`font-bold text-lg truncate select-text cursor-text ${msg.is_read ? 'text-slate-400' : 'text-white'}`}>{msg.name || 'Neznámý'}</h3>{!msg.is_read && <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider rounded-full border border-indigo-500/30">Nová</span>}</div>
-                                    <div className="flex items-center gap-2 text-slate-500 text-sm group/email"><AtSign className="w-3 h-3"/> <span className="select-text cursor-text hover:text-indigo-400 transition" onClick={() => copyToClipboard(msg.email)}>{msg.email}</span></div>
+                            <div className="flex flex-col md:flex-row md:items-center gap-2 mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${msg.is_read ? 'bg-white/5 text-slate-500' : 'bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg'}`}>{(msg.name || 'A').charAt(0).toUpperCase()}</div>
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className={`font-bold text-lg truncate select-text cursor-text ${msg.is_read ? 'text-slate-400' : 'text-white'}`}>{msg.name || 'Neznámý'}</h3>
+                                            {!msg.is_read && <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider rounded-full border border-indigo-500/30">Nová</span>}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-slate-500 text-sm group/email"><AtSign className="w-3 h-3"/> <span className="select-text cursor-text hover:text-indigo-400 transition" onClick={() => copyToClipboard(msg.email)}>{msg.email}</span></div>
+                                    </div>
                                 </div>
-                                <span className="text-slate-600 text-xs font-mono ml-auto bg-black/20 px-3 py-1 rounded-full border border-white/5 shrink-0">{new Date(msg.created_at).toLocaleString('cs-CZ')}</span>
+
+                                {/* ZOBRAZENÍ SLUŽBY (BADGE) */}
+                                <div className="md:ml-auto mt-2 md:mt-0 flex flex-wrap gap-2 items-center">
+                                    {msg.products?.name ? (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-bold border border-blue-500/20">
+                                            <Briefcase className="w-3 h-3" /> {msg.products.name}
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-500/10 text-slate-400 text-xs font-bold border border-slate-500/20">
+                                            Obecný dotaz
+                                        </span>
+                                    )}
+                                    <span className="text-slate-600 text-xs font-mono bg-black/20 px-3 py-1 rounded-full border border-white/5 whitespace-nowrap">{new Date(msg.created_at).toLocaleString('cs-CZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
                             </div>
                             <div className={`p-4 rounded-xl text-sm leading-relaxed whitespace-pre-wrap border select-text cursor-text ${msg.is_read ? 'bg-transparent border-transparent text-slate-500' : 'bg-[#0f172a]/50 border-white/5 text-slate-300'}`}>{msg.message}</div>
                         </div>
-                        <div className="flex md:flex-col gap-2 justify-center p-4 border-t md:border-t-0 md:border-l border-white/5 bg-black/10 md:bg-transparent">
+
+                        <div className="flex flex-row md:flex-col gap-2 justify-center p-4 border-t md:border-t-0 md:border-l border-white/5 bg-black/10 md:bg-transparent">
                             {!msg.is_read ? (<button onClick={() => markAsRead(msg.id)} className="p-3 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-xl transition shadow-lg border border-indigo-500/20"><CheckCircle2 className="w-5 h-5"/></button>) : (<div className="p-3 text-slate-600 cursor-default"><Eye className="w-5 h-5"/></div>)}
                             <button onClick={() => { setItemToDelete(msg); setIsDeleteOpen(true) }} className="p-3 bg-red-500/5 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition border border-transparent hover:border-red-500/30"><Trash2 className="w-5 h-5"/></button>
                         </div>
@@ -423,25 +436,86 @@ export default function Admin() {
             </div>
         )}
 
-        <div className="flex justify-between items-center mt-8 pt-6 border-t border-white/5">
-            <p className="text-sm text-slate-500">Zobrazeno {items.length} z {totalItems} záznamů</p>
+        <div className="flex flex-col md:flex-row justify-between items-center mt-8 pt-6 border-t border-white/5 gap-4">
+            <p className="text-sm text-slate-500 text-center md:text-left">
+                Zobrazeno {items.length} z {totalItems} záznamů
+            </p>
             <div className="flex gap-2">
-                <button onClick={prevPage} disabled={currentPage === 1} className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl text-sm font-bold flex items-center gap-2 transition"><ChevronLeft className="w-4 h-4"/> Předchozí</button>
+                <button onClick={prevPage} disabled={currentPage === 1} className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl text-sm font-bold flex items-center gap-2 transition">
+                    <ChevronLeft className="w-4 h-4"/> 
+                    <span className="hidden sm:inline">Předchozí</span>
+                </button>
+                
                 <span className="px-4 py-2 text-slate-400 text-sm font-mono flex items-center bg-[#1e293b] rounded-xl border border-white/5">{currentPage} / {totalPages || 1}</span>
-                <button onClick={nextPage} disabled={currentPage >= totalPages} className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl text-sm font-bold flex items-center gap-2 transition">Další <ChevronRight className="w-4 h-4"/></button>
+                
+                <button onClick={nextPage} disabled={currentPage >= totalPages} className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl text-sm font-bold flex items-center gap-2 transition">
+                    <span className="hidden sm:inline">Další</span>
+                    <ChevronRight className="w-4 h-4"/>
+                </button>
             </div>
         </div>
       </main>
 
-      {/* --- MODALS --- */}
-      {isFolderModalOpen && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsFolderModalOpen(false)}></div><div className="bg-[#1e293b] border border-white/10 rounded-2xl w-full max-w-sm relative z-10 p-6 shadow-2xl"><h3 className="text-lg font-bold text-white mb-4">Nová složka</h3><form onSubmit={createFolder} className="space-y-4"><input type="text" placeholder="Název složky..." autoFocus value={newFolderName} onChange={e => setNewFolderName(e.target.value)} className="w-full bg-[#0f172a] border border-white/10 rounded-xl p-3 focus:border-indigo-500 outline-none text-white"/><div className="flex justify-end gap-2"><button type="button" onClick={() => setIsFolderModalOpen(false)} className="px-4 py-2 text-slate-400 hover:text-white">Zrušit</button><button className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold">Vytvořit</button></div></form></div></div>)}
-      {toast.show && (<div className="fixed bottom-10 right-10 bg-[#1e293b] border border-white/10 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-[60] animate-in slide-in-from-right-10 fade-in duration-300"><div className="bg-green-500/20 p-2 rounded-full text-green-400 border border-green-500/20"><CheckCircle2 className="w-6 h-6"/></div><div><h4 className="font-bold text-sm">Úspěch</h4><p className="text-slate-400 text-xs">{toast.message}</p></div><button onClick={() => setToast({ ...toast, show: false })} className="ml-2 text-slate-500 hover:text-white transition"><X className="w-4 h-4"/></button></div>)}
-      {/* MODAL PRO POTVRZENÍ SMAZÁNÍ */}
-      {isDeleteOpen && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setIsDeleteOpen(false)}></div><div className="bg-[#1e293b] border border-white/10 rounded-3xl w-full max-w-sm relative z-10 shadow-2xl p-8 text-center animate-in zoom-in-95 duration-200 ring-1 ring-white/10"><div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 ring-4 ring-red-500/5"><AlertTriangle className="w-10 h-10"/></div><h3 className="text-2xl font-bold mb-3 text-white">Opravdu smazat?</h3><p className="text-slate-400 mb-8 leading-relaxed">Tato akce je nevratná a položka bude trvale odstraněna z databáze.</p><div className="flex gap-4 justify-center"><button onClick={() => setIsDeleteOpen(false)} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-bold transition border border-white/5">Zrušit</button><button onClick={executeDel} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition shadow-lg shadow-red-500/20 transform hover:scale-105">Smazat navždy</button></div></div></div>)}
-      {lightboxOpen && (<div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-200" onClick={() => setLightboxOpen(false)}><button className="absolute top-6 right-6 text-slate-400 hover:text-white p-2 z-50 rounded-full hover:bg-white/10 transition"><X className="w-10 h-10"/></button><div className="relative w-full h-full flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>{lightboxImages.length > 1 && <button onClick={prevImage} className="absolute left-4 md:left-10 p-4 bg-black/50 hover:bg-indigo-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 border border-white/10"><ChevronLeft className="w-8 h-8"/></button>}<img src={lightboxImages[lightboxIndex]} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300" />{lightboxImages.length > 1 && <button onClick={nextImage} className="absolute right-4 md:right-10 p-4 bg-black/50 hover:bg-indigo-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 border border-white/10"><ChevronRight className="w-8 h-8"/></button>}<div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/60 px-6 py-2 rounded-full text-white text-sm font-medium backdrop-blur-md border border-white/10 shadow-lg">{lightboxIndex + 1} / {lightboxImages.length}</div></div></div>)}
+      {/* --- MODALS (FORM) --- */}
       {isFormOpen && activeTab !== 'messages' && activeTab !== 'reviews' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity" onClick={() => setIsFormOpen(false)}></div><div className="bg-[#0f172a] border border-white/10 rounded-3xl w-full max-w-3xl relative z-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 ring-1 ring-white/10"><div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#162032]"><h3 className="text-xl font-bold flex items-center gap-3 text-white"><div className={`p-2.5 rounded-xl ${isEditing ? 'bg-indigo-500/20 text-indigo-400' : 'bg-green-500/20 text-green-400'}`}>{isEditing ? <Pencil className="w-5 h-5"/> : <Plus className="w-5 h-5"/>}</div>{isEditing ? 'Upravit záznam' : 'Nový záznam'}</h3><button onClick={() => setIsFormOpen(false)} className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition"><X className="w-6 h-6"/></button></div><div className="p-8 overflow-y-auto custom-scrollbar"><form id="dataForm" onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="space-y-2 md:col-span-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Název</label><input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition text-lg font-medium placeholder:text-slate-600"/></div>{activeTab === 'services' ? (<div className="space-y-2 md:col-span-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Cena (Kč)</label><input type="number" required value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition font-mono text-lg"/></div>) : (<><div className="space-y-2 md:col-span-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Galerie <span className="text-indigo-400 font-normal normal-case opacity-70 ml-2">Ctrl+V nebo Drag & Drop</span></label><div className={`relative border-2 border-dashed rounded-2xl transition-all duration-200 mb-6 ${isDragging ? 'border-indigo-500 bg-indigo-500/10 scale-[1.01]' : 'border-white/10 bg-[#1e293b] hover:bg-white/5'}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}><input type="file" multiple onChange={handleFileInputChange} className="hidden" id="file-upload" accept="image/*" /><label htmlFor="file-upload" className="w-full h-full p-10 flex flex-col items-center justify-center gap-3 cursor-pointer">{isUploading ? <Loader2 className="animate-spin w-10 h-10 text-indigo-500"/> : <Upload className={`w-10 h-10 ${isDragging ? 'text-indigo-500' : 'text-slate-500'}`}/>}<div className="text-center"><p className={`font-medium ${isDragging ? 'text-indigo-400' : 'text-slate-300'}`}>{isUploading ? 'Nahrávám...' : 'Klikni nebo přetáhni obrázky'}</p><p className="text-xs text-slate-500 mt-1">Podpora JPG, PNG, WEBP</p></div></label></div>{formData.images.length > 0 && (<div className="grid grid-cols-5 gap-3">{formData.images.map((imgUrl, index) => (<div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group shadow-sm"><img src={imgUrl} className="w-full h-full object-cover" /><button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-black/60 hover:bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition backdrop-blur-sm"><X className="w-3 h-3"/></button>{index === 0 && <div className="absolute bottom-0 inset-x-0 bg-indigo-600/90 text-[9px] text-center text-white py-0.5 font-bold uppercase tracking-wider backdrop-blur-sm">Cover</div>}</div>))}</div>)}</div><div className="space-y-2 md:col-span-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Tagy</label><div className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-3 flex flex-wrap gap-2 items-center min-h-[60px] focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">{formData.tags.map((tag, index) => (<span key={index} className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 font-medium">{tag}<button type="button" onClick={() => removeTag(tag)} className="hover:text-white"><X className="w-3 h-3"/></button></span>))}<input type="text" placeholder="Nový tag (Enter)..." value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (tagInput.trim()) { setFormData({...formData, tags: [...formData.tags, tagInput.trim()]}); setTagInput('') } } }} className="bg-transparent outline-none text-white flex-1 h-8 placeholder:text-slate-600"/></div></div></>)}<div className="md:col-span-2 space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Popis</label><textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white h-40 resize-none leading-relaxed placeholder:text-slate-600"/></div></form></div><div className="p-6 border-t border-white/10 bg-[#162032] flex justify-end gap-3"><button onClick={() => setIsFormOpen(false)} className="px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl font-bold transition">Zrušit</button><button form="dataForm" disabled={isSubmitting || isUploading} className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50 transform hover:scale-[1.02] active:scale-[0.98]">{isSubmitting ? <Loader2 className="animate-spin w-5 h-5"/> : <Save className="w-5 h-5"/>}{isEditing ? 'Uložit změny' : 'Vytvořit záznam'}</button></div></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity" onClick={() => setIsFormOpen(false)}></div>
+            <div className="bg-[#0f172a] border border-white/10 rounded-3xl w-full max-w-3xl relative z-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 ring-1 ring-white/10">
+                <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#162032]">
+                    <h3 className="text-xl font-bold flex items-center gap-3 text-white"><div className={`p-2.5 rounded-xl ${isEditing ? 'bg-indigo-500/20 text-indigo-400' : 'bg-green-500/20 text-green-400'}`}>{isEditing ? <Pencil className="w-5 h-5"/> : <Plus className="w-5 h-5"/>}</div>{isEditing ? 'Upravit záznam' : 'Nový záznam'}</h3>
+                    <button onClick={() => setIsFormOpen(false)} className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition"><X className="w-6 h-6"/></button>
+                </div>
+                <div className="p-8 overflow-y-auto custom-scrollbar">
+                    <form id="dataForm" onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2 md:col-span-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Název</label>
+                            <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition text-lg font-medium placeholder:text-slate-600"/>
+                        </div>
+                        {activeTab === 'services' ? (
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Cena (Kč)</label>
+                                <input type="number" required value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition font-mono text-lg"/>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Galerie <span className="text-indigo-400 font-normal normal-case opacity-70 ml-2">Ctrl+V nebo Drag & Drop</span></label>
+                                    <div className={`relative border-2 border-dashed rounded-2xl transition-all duration-200 mb-6 ${isDragging ? 'border-indigo-500 bg-indigo-500/10 scale-[1.01]' : 'border-white/10 bg-[#1e293b] hover:bg-white/5'}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+                                        <input type="file" multiple onChange={handleFileInputChange} className="hidden" id="file-upload" accept="image/*" />
+                                        <label htmlFor="file-upload" className="w-full h-full p-10 flex flex-col items-center justify-center gap-3 cursor-pointer">
+                                            {isUploading ? <Loader2 className="animate-spin w-10 h-10 text-indigo-500"/> : <Upload className={`w-10 h-10 ${isDragging ? 'text-indigo-500' : 'text-slate-500'}`}/>}
+                                            <div className="text-center"><p className={`font-medium ${isDragging ? 'text-indigo-400' : 'text-slate-300'}`}>{isUploading ? 'Nahrávám...' : 'Klikni nebo přetáhni obrázky'}</p><p className="text-xs text-slate-500 mt-1">Podpora JPG, PNG, WEBP</p></div>
+                                        </label>
+                                    </div>
+                                    {formData.images.length > 0 && (<div className="grid grid-cols-5 gap-3">{formData.images.map((imgUrl, index) => (<div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group shadow-sm"><img src={imgUrl} className="w-full h-full object-cover" /><button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-black/60 hover:bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition backdrop-blur-sm"><X className="w-3 h-3"/></button>{index === 0 && <div className="absolute bottom-0 inset-x-0 bg-indigo-600/90 text-[9px] text-center text-white py-0.5 font-bold uppercase tracking-wider backdrop-blur-sm">Cover</div>}</div>))}</div>)}
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Tagy</label>
+                                    <div className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-3 flex flex-wrap gap-2 items-center min-h-[60px] focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">
+                                        {formData.tags.map((tag, index) => (<span key={index} className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 font-medium">{tag}<button type="button" onClick={() => removeTag(tag)} className="hover:text-white"><X className="w-3 h-3"/></button></span>))}
+                                        <input type="text" placeholder="Nový tag (Enter)..." value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (tagInput.trim()) { setFormData({...formData, tags: [...formData.tags, tagInput.trim()]}); setTagInput('') } } }} className="bg-transparent outline-none text-white flex-1 h-8 placeholder:text-slate-600"/>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                        <div className="md:col-span-2 space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Popis</label>
+                            <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white h-40 resize-none leading-relaxed placeholder:text-slate-600"/>
+                        </div>
+                    </form>
+                </div>
+                <div className="p-6 border-t border-white/10 bg-[#162032] flex justify-end gap-3">
+                    <button onClick={() => setIsFormOpen(false)} className="px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl font-bold transition">Zrušit</button>
+                    <button form="dataForm" disabled={isSubmitting || isUploading} className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50 transform hover:scale-[1.02] active:scale-[0.98]">{isSubmitting ? <Loader2 className="animate-spin w-5 h-5"/> : <Save className="w-5 h-5"/>}{isEditing ? 'Uložit změny' : 'Vytvořit záznam'}</button>
+                </div>
+            </div>
+        </div>
       )}
+
+      {/* --- OSTATNÍ MODALY (DELETE, LIGHTBOX, TOAST) --- */}
+      {isDeleteOpen && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setIsDeleteOpen(false)}></div><div className="bg-[#1e293b] border border-white/10 rounded-3xl w-full max-w-sm relative z-10 shadow-2xl p-8 text-center animate-in zoom-in-95 duration-200 ring-1 ring-white/10"><div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 ring-4 ring-red-500/5"><AlertTriangle className="w-10 h-10"/></div><h3 className="text-2xl font-bold mb-3 text-white">Opravdu smazat?</h3><p className="text-slate-400 mb-8 leading-relaxed">Tato akce je nevratná a položka bude trvale odstraněna z databáze.</p><div className="flex gap-4 justify-center"><button onClick={() => setIsDeleteOpen(false)} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-bold transition border border-white/5">Zrušit</button><button onClick={executeDel} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition shadow-lg shadow-red-500/20 transform hover:scale-105">Smazat navždy</button></div></div></div>)}
+      {toast.show && (<div className="fixed bottom-10 right-10 bg-[#1e293b] border border-white/10 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-[60] animate-in slide-in-from-right-10 fade-in duration-300"><div className="bg-green-500/20 p-2 rounded-full text-green-400 border border-green-500/20"><CheckCircle2 className="w-6 h-6"/></div><div><h4 className="font-bold text-sm">Úspěch</h4><p className="text-slate-400 text-xs">{toast.message}</p></div><button onClick={() => setToast({ ...toast, show: false })} className="ml-2 text-slate-500 hover:text-white transition"><X className="w-4 h-4"/></button></div>)}
+      {lightboxOpen && (<div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-200" onClick={() => setLightboxOpen(false)}><button className="absolute top-6 right-6 text-slate-400 hover:text-white p-2 z-50 rounded-full hover:bg-white/10 transition"><X className="w-10 h-10"/></button><div className="relative w-full h-full flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>{lightboxImages.length > 1 && <button onClick={prevImage} className="absolute left-4 md:left-10 p-4 bg-black/50 hover:bg-indigo-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 border border-white/10"><ChevronLeft className="w-8 h-8"/></button>}<img src={lightboxImages[lightboxIndex]} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300" />{lightboxImages.length > 1 && <button onClick={nextImage} className="absolute right-4 md:right-10 p-4 bg-black/50 hover:bg-indigo-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 border border-white/10"><ChevronRight className="w-8 h-8"/></button>}<div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/60 px-6 py-2 rounded-full text-white text-sm font-medium backdrop-blur-md border border-white/10 shadow-lg">{lightboxIndex + 1} / {lightboxImages.length}</div></div></div>)}
     </div>
   )
 }
