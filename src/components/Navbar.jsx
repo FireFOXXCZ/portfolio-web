@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react'
 import { Terminal, Menu, X, ArrowRight, Lock, LayoutDashboard } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabase'
-import { useNavigate, useLocation } from 'react-router-dom' // Přidáno
+import { useNavigate, useLocation } from 'react-router-dom'
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [user, setUser] = useState(null)
   
-  const navigate = useNavigate() // Pro přepínání stránek
-  const location = useLocation() // Abychom věděli, kde jsme
+  const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     const checkUser = async () => {
@@ -20,26 +20,24 @@ export default function Navbar() {
     checkUser()
   }, [])
 
-  // Funkce pro hladké scrollování bez # v URL
   const scrollToSection = (sectionId) => {
-    setIsOpen(false) // Zavřít mobilní menu
+    setIsOpen(false)
     
-    // Pokud jsme na hlavní stránce, jen sjedeme dolů
     if (location.pathname === '/') {
         const element = document.getElementById(sectionId)
         if (element) {
             element.scrollIntoView({ behavior: 'smooth' })
         }
     } else {
-        // Pokud jsme jinde (Admin/Login), musíme jít na hlavní stránku
         navigate(`/#${sectionId}`)
     }
   }
 
+  // --- ZMĚNA ZDE ---
   const links = [
     { name: 'Služby', id: 'sluzby' },
     { name: 'Projekty', id: 'portfolio' },
-    { name: 'Tech Stack', id: 'tech' },
+    { name: 'Recenze', id: 'recenze' }, // Změněno z Tech Stack na Recenze
   ]
 
   return (
@@ -47,7 +45,7 @@ export default function Navbar() {
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 w-[95%] md:w-auto max-w-5xl z-50">
         <div className="bg-[#0f172a]/60 backdrop-blur-xl border border-white/10 rounded-full px-4 py-3 shadow-2xl shadow-blue-900/10 flex justify-between items-center md:gap-8">
           
-          {/* LOGO - kliknutí scrolluje nahoru */}
+          {/* LOGO */}
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2 pl-2 group">
             <div className="p-1.5 bg-blue-500/10 rounded-lg group-hover:bg-blue-500/20 transition">
                 <Terminal className="text-blue-500 w-5 h-5" />
@@ -60,7 +58,7 @@ export default function Navbar() {
             {links.map((link, index) => (
               <button 
                 key={link.name}
-                onClick={() => scrollToSection(link.id)} // Použijeme naši funkci místo href
+                onClick={() => scrollToSection(link.id)}
                 className="relative px-5 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
