@@ -1,22 +1,22 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
-import Login from './pages/Login'
 import Admin from './pages/Admin'
+import Login from './pages/Login'
+import Privacy from './pages/Privacy' // 1. IMPORT
 
 function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
-        {/* Když uživatel přijde na hlavní stránku "/", ukaž mu Home */}
         <Route path="/" element={<Home />} />
-        
-        {/* Když přijde na "/login", ukaž mu Login */}
+        <Route path="/admin" element={<Admin />} />
         <Route path="/login" element={<Login />} />
         
-        {/* Když přijde na "/admin", ukaž mu Admin */}
-        <Route path="/admin" element={<Admin />} />
+        {/* 2. NOVÁ CESTA */}
+        <Route path="/privacy" element={<Privacy />} />
+        
       </Routes>
-    </BrowserRouter>
+    </Router>
   )
 }
 

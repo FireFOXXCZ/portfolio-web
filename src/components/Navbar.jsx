@@ -22,7 +22,6 @@ export default function Navbar() {
 
   const scrollToSection = (sectionId) => {
     setIsOpen(false)
-    
     if (location.pathname === '/') {
         const element = document.getElementById(sectionId)
         if (element) {
@@ -33,11 +32,21 @@ export default function Navbar() {
     }
   }
 
-  // --- ZMĚNA ZDE ---
+  // --- NOVÁ FUNKCE PRO LOGO ---
+  const handleLogoClick = () => {
+    if (location.pathname === '/') {
+        // Pokud jsme doma, jen vyjedeme nahoru
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+        // Pokud jsme jinde (Privacy, Login...), jdeme na domovskou stránku
+        navigate('/')
+    }
+  }
+
   const links = [
     { name: 'Služby', id: 'sluzby' },
     { name: 'Projekty', id: 'portfolio' },
-    { name: 'Recenze', id: 'recenze' }, // Změněno z Tech Stack na Recenze
+    { name: 'Recenze', id: 'recenze' },
   ]
 
   return (
@@ -45,8 +54,8 @@ export default function Navbar() {
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 w-[95%] md:w-auto max-w-5xl z-50">
         <div className="bg-[#0f172a]/60 backdrop-blur-xl border border-white/10 rounded-full px-4 py-3 shadow-2xl shadow-blue-900/10 flex justify-between items-center md:gap-8">
           
-          {/* LOGO */}
-          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2 pl-2 group">
+          {/* LOGO - POUŽÍVÁ NOVOU FUNKCI */}
+          <button onClick={handleLogoClick} className="flex items-center gap-2 pl-2 group">
             <div className="p-1.5 bg-blue-500/10 rounded-lg group-hover:bg-blue-500/20 transition">
                 <Terminal className="text-blue-500 w-5 h-5" />
             </div>
@@ -115,6 +124,14 @@ export default function Navbar() {
                  </button>
               ))}
               
+              <button 
+                onClick={() => scrollToSection('kontakt')} 
+                className="flex items-center justify-center gap-2 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition"
+              >
+                <span>Napsat mi</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
               <div className="h-px bg-white/10 my-2"></div>
 
               {user ? (

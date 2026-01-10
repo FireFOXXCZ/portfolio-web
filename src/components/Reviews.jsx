@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
-import { Star, Quote, ChevronLeft, ChevronRight, User, Briefcase, Send, Loader2, PlusCircle } from 'lucide-react'
+import { Star, Quote, ChevronLeft, ChevronRight, User, Briefcase, Send, Loader2, PlusCircle, CheckCircle2, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function Reviews() {
@@ -16,9 +16,19 @@ export default function Reviews() {
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({ name: '', role: '', text: '', stars: 5 })
 
+  // --- NOTIFIKACE (TOAST) ---
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
+
   useEffect(() => {
     fetchReviews()
   }, [])
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type })
+    setTimeout(() => {
+        setToast(prev => ({ ...prev, show: false }))
+    }, 4000)
+  }
 
   async function fetchReviews() {
     try {
@@ -26,7 +36,7 @@ export default function Reviews() {
         .from('reviews')
         .select('*')
         .eq('is_approved', true)
-        .order('created_at', { ascending: false }) // Nejnovější nahoře
+        .order('created_at', { ascending: false }) 
       
       if (error) throw error
       setReviews(data || [])
@@ -45,13 +55,15 @@ export default function Reviews() {
         const { error } = await supabase.from('reviews').insert([formData])
         if (error) throw error
         
-        // Reset a obnovení
+        showToast('Děkuji! Recenze byla odeslána a čeká na schválení.', 'success')
+        
         await fetchReviews()
         setFormData({ name: '', role: '', text: '', stars: 5 })
         setShowForm(false)
-        setCurrentPage(1) // Skočit na první stránku, kde je nová recenze
+        setCurrentPage(1)
     } catch (error) {
-        alert("Chyba při odesílání: " + error.message)
+        console.error(error)
+        showToast('Něco se pokazilo. Zkuste to prosím později.', 'error')
     } finally {
         setSubmitting(false)
     }
@@ -61,6 +73,7 @@ export default function Reviews() {
   const indexOfLastItem = currentPage * ITEMS_PER_PAGE
   const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE
   const currentReviews = reviews.slice(indexOfFirstItem, indexOfLastItem)
+  // Zajištění, že totalPages je vždy alespoň 1, i když nejsou žádné recenze
   const totalPages = Math.ceil(reviews.length / ITEMS_PER_PAGE) || 1
 
   const nextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1) }
@@ -70,7 +83,6 @@ export default function Reviews() {
     <section id="recenze" className="py-24 px-6 relative overflow-hidden bg-[#0f172a]">
       <div className="max-w-6xl mx-auto relative z-10">
         
-        {/* Nadpis + Tlačítko přidat */}
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
             Co říkají klienti
@@ -87,7 +99,6 @@ export default function Reviews() {
           </button>
         </div>
 
-        {/* --- FORMULÁŘ --- */}
         <AnimatePresence>
             {showForm && (
                 <motion.form 
@@ -146,7 +157,6 @@ export default function Reviews() {
             )}
         </AnimatePresence>
 
-        {/* --- VÝPIS RECENZÍ --- */}
         {loading ? (
              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {[1,2,3].map(i => <div key={i} className="h-64 bg-white/5 rounded-3xl animate-pulse"></div>)}
@@ -191,29 +201,57 @@ export default function Reviews() {
             </div>
         )}
 
-        {/* --- STRÁNKOVÁNÍ --- */}
-        {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-4 mt-12">
-                <button onClick={prevPage} disabled={currentPage === 1} className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5">
-                    <ChevronLeft className="w-5 h-5" />
-                </button>
-                
-                <span className="text-slate-400 font-mono text-sm">
-                    {currentPage} / {totalPages}
-                </span>
+        {/* --- STRÁNKOVÁNÍ - ZOBRAZIT VŽDY --- */}
+        <div className="flex justify-center items-center gap-4 mt-12">
+            <button onClick={prevPage} disabled={currentPage === 1} className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5">
+                <ChevronLeft className="w-5 h-5" />
+            </button>
+            
+            <span className="text-slate-400 font-mono text-sm">
+                {currentPage} / {totalPages}
+            </span>
 
-                <button onClick={nextPage} disabled={currentPage === totalPages} className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5">
-                    <ChevronRight className="w-5 h-5" />
-                </button>
-            </div>
-        )}
+            <button onClick={nextPage} disabled={currentPage === totalPages} className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5">
+                <ChevronRight className="w-5 h-5" />
+            </button>
+        </div>
 
       </div>
+
+      <AnimatePresence>
+        {toast.show && (
+            <motion.div 
+                initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-6 py-4 rounded-full shadow-2xl backdrop-blur-xl border border-white/10 bg-[#0f172a]/90"
+                style={{ 
+                    boxShadow: toast.type === 'success' ? '0 10px 40px -10px rgba(34, 197, 94, 0.3)' : '0 10px 40px -10px rgba(239, 68, 68, 0.3)',
+                    borderColor: toast.type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+                }}
+            >
+                <div className={`p-2 rounded-full ${toast.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    {toast.type === 'success' ? <CheckCircle2 className="w-6 h-6"/> : <AlertCircle className="w-6 h-6"/>}
+                </div>
+                
+                <div className="pr-4">
+                    <h4 className={`font-bold text-sm ${toast.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                        {toast.type === 'success' ? 'Odesláno' : 'Chyba'}
+                    </h4>
+                    <p className="text-slate-300 text-xs font-medium">{toast.message}</p>
+                </div>
+
+                <button onClick={() => setToast({ ...toast, show: false })} className="p-1 hover:bg-white/10 rounded-full transition text-slate-400 hover:text-white">
+                    <X className="w-4 h-4" />
+                </button>
+            </motion.div>
+        )}
+      </AnimatePresence>
+
     </section>
   )
 }
 
-// Pomocná komponenta pro ikonu Křížku (pokud ji nemáš importovanou jinde, tady je inline pro jistotu)
 function XIcon() {
     return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>
 }
