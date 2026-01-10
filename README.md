@@ -1,16 +1,51 @@
-# React + Vite
+# 🚀 FireFOXX Portfolio
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Osobní portfolio a webová prezentace Full-stack vývojáře. Web slouží k prezentaci projektů, služeb a sběru poptávek.
 
-Currently, two official plugins are available:
+🌐 **Live Demo:** [www.firefoxx.online](https://www.firefoxx.online)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🛠 Použité technologie
 
-## React Compiler
+Tento projekt běží na moderním stacku zaměřeném na rychlost a škálovatelnost.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+* **Frontend:** React (Vite)
+* **Styling:** Tailwind CSS
+* **Backend & Databáze:** Supabase (PostgreSQL)
+* **Animace:** Framer Motion
+* **Ikony:** Lucide React
+* **Hosting:** Vercel
 
-## Expanding the ESLint configuration
+## ✨ Klíčové funkce
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+* **⚡ Moderní & Responzivní design:** Glassmorphism efekty, tmavý režim a plynulé animace.
+* **🔒 Admin Panel:** Zabezpečená sekce pro správu obsahu (projekty, služby, recenze).
+* **💬 Real-time Notifikace:** Okamžité upozornění na nové zprávy a recenze díky Supabase Realtime.
+* **🗂 Dynamický obsah:** Veškerá data (portfolio, ceník) jsou načítána z databáze.
+* **📨 Kontaktní formulář:** S výběrem služby a validací.
+
+## 📦 Instalace a spuštění
+
+1.  **Naklonování repozitáře:**
+    ```bash
+    git clone [https://github.com/tvoje-uzivatelske-jmeno/nazev-repozitare.git](https://github.com/tvoje-uzivatelske-jmeno/nazev-repozitare.git)
+    ```
+
+2.  **Instalace závislostí:**
+    ```bash
+    npm install
+    ```
+
+3.  **Nastavení prostředí (.env):**
+    Vytvořte soubor `.env` a přidejte klíče ze Supabase:
+    ```env
+    VITE_SUPABASE_URL=your_supabase_url
+    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+    ```
+
+4.  **Spuštění:**
+    ```bash
+    npm run dev
+    ```
+
+---
+© 2026 FireFOXX. Vytvořeno s ❤️ a ☕.
