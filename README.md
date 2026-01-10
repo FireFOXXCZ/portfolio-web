@@ -27,7 +27,7 @@ Tento projekt běží na moderním stacku zaměřeném na rychlost a škálovate
 
 1.  **Naklonování repozitáře:**
     ```bash
-    git clone [https://github.com/tvoje-uzivatelske-jmeno/nazev-repozitare.git](https://github.com/tvoje-uzivatelske-jmeno/nazev-repozitare.git)
+    git clone https://github.com/FireFOXX/portfolio.git
     ```
 
 2.  **Instalace závislostí:**
