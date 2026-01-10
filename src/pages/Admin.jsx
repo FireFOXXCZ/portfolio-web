@@ -204,25 +204,40 @@ export default function Admin() {
           showToast(newStatus ? "Recenze schválena" : "Recenze skryta")
           setRefreshTrigger(p => p + 1)
       } else {
-          showToast("Chyba při změně stavu")
+          showToast("Chyba při změně stavu", 'error')
           setRefreshTrigger(p => p + 1)
       }
   }
 
-  async function deleteItem(id) {
+  // --- MAZÁNÍ (OPRAVENO: Kontrola chyb před smazáním z UI) ---
+  async function executeDel() {
+      if (!itemToDelete) return;
+      
       let table = 'messages';
       if (activeTab === 'projects') table = 'projects';
       if (activeTab === 'services') table = 'products';
       if (activeTab === 'reviews') table = 'reviews';
 
-      setItems(items.filter(item => item.id !== id))
-      await supabase.from(table).delete().eq('id', id)
+      // 1. Zkusíme smazat z DB
+      const { error } = await supabase.from(table).delete().eq('id', itemToDelete.id)
+      
+      if (error) {
+          // 2. Pokud chyba, zobrazíme ji červeně a NIC nemažeme z UI
+          console.error("Chyba při mazání:", error)
+          showToast("Chyba: " + error.message, 'error')
+      } else {
+          // 3. Pokud úspěch, smažeme z UI
+          setItems(prev => prev.filter(item => item.id !== itemToDelete.id))
+          showToast("Položka smazána", 'success')
+          setRefreshTrigger(prev => prev + 1)
+          fetchUnreadCounts()
+      }
       
       setIsDeleteOpen(false)
-      setRefreshTrigger(prev => prev + 1)
-      fetchUnreadCounts()
-      showToast("Položka smazána")
+      setItemToDelete(null)
   }
+
+  const confirmDel = (item) => { setItemToDelete(item); setIsDeleteOpen(true) }
 
   // --- UI HELPERS ---
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1
@@ -235,7 +250,10 @@ export default function Admin() {
   const handleDragOverFolder = (e, folderId) => { e.preventDefault(); setDragOverFolderId(folderId) }
   const handleDragLeaveFolder = (e) => { setDragOverFolderId(null) }
   const handleDropOnFolder = async (e, targetFolderId) => { e.preventDefault(); setDragOverFolderId(null); if (!draggedMessage) return; setItems(items.filter(item => item.id !== draggedMessage.id)); await supabase.from('messages').update({ folder_id: targetFolderId }).eq('id', draggedMessage.id); fetchUnreadCounts(); setDraggedMessage(null); setRefreshTrigger(prev => prev + 1) }
-  const showToast = (msg) => { setToast({ show: true, message: msg, type: 'success' }); setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000) }
+  
+  // Opravený Toast s podporou typu (error/success)
+  const showToast = (msg, type = 'success') => { setToast({ show: true, message: msg, type }); setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000) }
+  
   const copyToClipboard = (text) => { navigator.clipboard.writeText(text); showToast(`Zkopírováno: ${text}`) }
   
   async function uploadFilesToSupabase(files) { if (!files?.length) return; setIsUploading(true); const newUrls = []; try { for (const file of files) { if (!file.type.startsWith('image/')) continue; const fileExt = file.name.split('.').pop(); const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`; const filePath = `${fileName}`; await supabase.storage.from('portfolio').upload(filePath, file); const { data } = supabase.storage.from('portfolio').getPublicUrl(filePath); newUrls.push(data.publicUrl) } setFormData(prev => ({ ...prev, images: [...prev.images, ...newUrls] })) } catch (e) { alert(e.message) } finally { setIsUploading(false); setIsDragging(false) } }
@@ -246,12 +264,32 @@ export default function Admin() {
   const removeImage = (index) => setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }))
   const removeTag = (tagToRemove) => setFormData(prev => ({ ...prev, tags: prev.tags.filter(tag => tag !== tagToRemove) }))
   const getFolderIcon = (icon) => { const icons = { inbox: Inbox, check: CheckSquare, archive: Archive, clock: Clock }; const Icon = icons[icon] || Folder; return <Icon className="w-4 h-4"/> }
+  
   const openAdd = () => { setFormData(initialFormState); setTagInput(''); setIsEditing(false); setIsFormOpen(true) }
   const openEdit = (item) => { setIsEditing(true); setTagInput(''); setIsFormOpen(true); const images = item.images?.length ? item.images : (item.image_url ? [item.image_url] : []); setFormData({ id: item.id, title: item.name || item.title, price: item.price, description: item.description, images, tags: item.tags || [] }) }
-  const handleSave = async (e) => { e.preventDefault(); setIsSubmitting(true); const table = activeTab === 'services' ? 'products' : 'projects'; const payload = activeTab === 'services' ? { name: formData.title, price: Number(formData.price), description: formData.description } : { title: formData.title, description: formData.description, images: formData.images, image_url: formData.images[0]||null, tags: formData.tags }; const q = isEditing ? supabase.from(table).update(payload).eq('id', formData.id) : supabase.from(table).insert([payload]); const { error } = await q; if (!error) { fetchData(); setIsFormOpen(false); setRefreshTrigger(prev => prev + 1) } else { alert(error.message) } setIsSubmitting(false) }
   
-  const confirmDel = (item) => { setItemToDelete(item); setIsDeleteOpen(true) }
-  const executeDel = async () => { if (!itemToDelete) return; await deleteItem(itemToDelete.id); setIsDeleteOpen(false); setItemToDelete(null) }
+  // OPRAVENO: Ukládání ceny jako textu (bez Number())
+  const handleSave = async (e) => { 
+      e.preventDefault(); 
+      setIsSubmitting(true); 
+      const table = activeTab === 'services' ? 'products' : 'projects'; 
+      // ZDE: price je nyní brána jako text přímo z formData
+      const payload = activeTab === 'services' 
+        ? { name: formData.title, price: formData.price, description: formData.description } 
+        : { title: formData.title, description: formData.description, images: formData.images, image_url: formData.images[0]||null, tags: formData.tags }; 
+      
+      const q = isEditing ? supabase.from(table).update(payload).eq('id', formData.id) : supabase.from(table).insert([payload]); 
+      const { error } = await q; 
+      if (!error) { 
+          fetchData(); 
+          setIsFormOpen(false); 
+          setRefreshTrigger(prev => prev + 1) 
+      } else { 
+          // Error zobrazíme v toastu
+          showToast(error.message, 'error')
+      } 
+      setIsSubmitting(false) 
+  }
   
   const openLightbox = (images, index = 0) => { if (images?.length) { setLightboxImages(images); setLightboxIndex(index); setLightboxOpen(true) } }
   const nextImage = (e) => { e?.stopPropagation(); setLightboxIndex((prev) => (prev + 1) % lightboxImages.length) }
@@ -378,7 +416,7 @@ export default function Admin() {
                         </div>
                         <div className="flex md:flex-col gap-2 justify-center border-t md:border-t-0 md:border-l border-white/5 pt-4 md:pt-0 md:pl-6">
                             <button onClick={() => toggleReviewStatus(review)} className={`p-3 rounded-xl transition border flex items-center justify-center gap-2 md:w-12 ${review.is_approved ? 'bg-white/5 text-slate-400 border-transparent hover:bg-orange-500/10 hover:text-orange-400' : 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-600 hover:text-white'}`} title={review.is_approved ? "Skrýt" : "Schválit"}>{review.is_approved ? <ThumbsDown className="w-5 h-5"/> : <ThumbsUp className="w-5 h-5"/>}</button>
-                            <button onClick={() => { setItemToDelete(review); setIsDeleteOpen(true) }} className="p-3 bg-red-500/5 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition border border-transparent hover:border-red-500/30 flex items-center justify-center md:w-12"><Trash2 className="w-5 h-5"/></button>
+                            <button onClick={() => confirmDel(review)} className="p-3 bg-red-500/5 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition border border-transparent hover:border-red-500/30 flex items-center justify-center md:w-12"><Trash2 className="w-5 h-5"/></button>
                         </div>
                     </div>
                 ))}
@@ -422,7 +460,7 @@ export default function Admin() {
 
                         <div className="flex flex-row md:flex-col gap-2 justify-center p-4 border-t md:border-t-0 md:border-l border-white/5 bg-black/10 md:bg-transparent">
                             {!msg.is_read ? (<button onClick={() => markAsRead(msg.id)} className="p-3 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-xl transition shadow-lg border border-indigo-500/20"><CheckCircle2 className="w-5 h-5"/></button>) : (<div className="p-3 text-slate-600 cursor-default"><Eye className="w-5 h-5"/></div>)}
-                            <button onClick={() => { setItemToDelete(msg); setIsDeleteOpen(true) }} className="p-3 bg-red-500/5 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition border border-transparent hover:border-red-500/30"><Trash2 className="w-5 h-5"/></button>
+                            <button onClick={() => confirmDel(msg)} className="p-3 bg-red-500/5 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition border border-transparent hover:border-red-500/30"><Trash2 className="w-5 h-5"/></button>
                         </div>
                     </div>
                 ))}
@@ -474,7 +512,8 @@ export default function Admin() {
                         {activeTab === 'services' ? (
                             <div className="space-y-2 md:col-span-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Cena (Kč)</label>
-                                <input type="number" required value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition font-mono text-lg"/>
+                                {/* OPRAVENO: type="text" pro možnost zadání rozsahu */}
+                                <input type="text" required value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition font-mono text-lg" placeholder="např. 4 500 - 7 000"/>
                             </div>
                         ) : (
                             <>
@@ -514,7 +553,21 @@ export default function Admin() {
 
       {/* --- OSTATNÍ MODALY (DELETE, LIGHTBOX, TOAST) --- */}
       {isDeleteOpen && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setIsDeleteOpen(false)}></div><div className="bg-[#1e293b] border border-white/10 rounded-3xl w-full max-w-sm relative z-10 shadow-2xl p-8 text-center animate-in zoom-in-95 duration-200 ring-1 ring-white/10"><div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 ring-4 ring-red-500/5"><AlertTriangle className="w-10 h-10"/></div><h3 className="text-2xl font-bold mb-3 text-white">Opravdu smazat?</h3><p className="text-slate-400 mb-8 leading-relaxed">Tato akce je nevratná a položka bude trvale odstraněna z databáze.</p><div className="flex gap-4 justify-center"><button onClick={() => setIsDeleteOpen(false)} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-bold transition border border-white/5">Zrušit</button><button onClick={executeDel} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition shadow-lg shadow-red-500/20 transform hover:scale-105">Smazat navždy</button></div></div></div>)}
-      {toast.show && (<div className="fixed bottom-10 right-10 bg-[#1e293b] border border-white/10 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-[60] animate-in slide-in-from-right-10 fade-in duration-300"><div className="bg-green-500/20 p-2 rounded-full text-green-400 border border-green-500/20"><CheckCircle2 className="w-6 h-6"/></div><div><h4 className="font-bold text-sm">Úspěch</h4><p className="text-slate-400 text-xs">{toast.message}</p></div><button onClick={() => setToast({ ...toast, show: false })} className="ml-2 text-slate-500 hover:text-white transition"><X className="w-4 h-4"/></button></div>)}
+      
+      {/* TOAST NOTIFIKACE (Upraveno pro zobrazení chyby) */}
+      {toast.show && (
+        <div className={`fixed bottom-10 right-10 border px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-[60] animate-in slide-in-from-right-10 fade-in duration-300 ${toast.type === 'error' ? 'bg-[#1e293b] border-red-500/30' : 'bg-[#1e293b] border-white/10'}`}>
+            <div className={`${toast.type === 'error' ? 'bg-red-500/20 text-red-400 border-red-500/20' : 'bg-green-500/20 text-green-400 border-green-500/20'} p-2 rounded-full border`}>
+                {toast.type === 'error' ? <AlertTriangle className="w-6 h-6"/> : <CheckCircle2 className="w-6 h-6"/>}
+            </div>
+            <div>
+                <h4 className={`font-bold text-sm ${toast.type === 'error' ? 'text-red-400' : 'text-white'}`}>{toast.type === 'error' ? 'Chyba' : 'Úspěch'}</h4>
+                <p className="text-slate-400 text-xs">{toast.message}</p>
+            </div>
+            <button onClick={() => setToast({ ...toast, show: false })} className="ml-2 text-slate-500 hover:text-white transition"><X className="w-4 h-4"/></button>
+        </div>
+      )}
+
       {lightboxOpen && (<div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-200" onClick={() => setLightboxOpen(false)}><button className="absolute top-6 right-6 text-slate-400 hover:text-white p-2 z-50 rounded-full hover:bg-white/10 transition"><X className="w-10 h-10"/></button><div className="relative w-full h-full flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>{lightboxImages.length > 1 && <button onClick={prevImage} className="absolute left-4 md:left-10 p-4 bg-black/50 hover:bg-indigo-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 border border-white/10"><ChevronLeft className="w-8 h-8"/></button>}<img src={lightboxImages[lightboxIndex]} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300" />{lightboxImages.length > 1 && <button onClick={nextImage} className="absolute right-4 md:right-10 p-4 bg-black/50 hover:bg-indigo-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 border border-white/10"><ChevronRight className="w-8 h-8"/></button>}<div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/60 px-6 py-2 rounded-full text-white text-sm font-medium backdrop-blur-md border border-white/10 shadow-lg">{lightboxIndex + 1} / {lightboxImages.length}</div></div></div>)}
     </div>
   )

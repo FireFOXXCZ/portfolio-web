@@ -20,7 +20,13 @@ export default function Services() {
 
   async function getProducts() {
     try {
-      const { data, error } = await supabase.from('products').select('*').order('price', { ascending: true })
+      // ZMĚNA: Řadíme podle ID nebo data vytvoření (created_at), 
+      // protože řazení podle ceny (textu) by dělalo neplechu.
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('id', { ascending: true }) // Nebo .order('created_at', { ascending: true })
+      
       if (error) throw error
       setProducts(data)
     } catch (error) {
@@ -82,17 +88,22 @@ export default function Services() {
                   {/* Cena a Tlačítko */}
                   <div className="mt-auto border-t border-white/5 pt-8">
                     <div className="flex items-end gap-1 mb-6">
-                        <span className="text-3xl font-bold text-white">{product.price.toLocaleString()} Kč</span>
-                        <span className="text-slate-500 text-sm mb-1">/ projekt</span>
+                        {/* ZMĚNA: Odstraněno .toLocaleString() a 'Kč' natvrdo. 
+                            Nyní se vypíše přesně to, co je v databázi (text). 
+                            Takže v DB můžeš mít: "4 500 - 7 000 Kč" nebo "Zdarma" */}
+                        <span className="text-3xl font-bold text-white">{product.price}</span>
+                        
+                        {/* Zobrazit "/ projekt" jen pokud to není "Zdarma" nebo "Dohodou", volitelně. 
+                            Zatím nechávám, ale můžeš to smazat, pokud to tam nechceš. */}
+                        <span className="text-slate-500 text-sm mb-1 ml-1 opacity-60 font-normal">
+                             {/* Pokud je v textu ceny číslo, zobrazíme / projekt, jinak nic */}
+                             {/\d/.test(product.price) ? '/ projekt' : ''}
+                        </span>
                     </div>
                     
-                    {/* --- ZMĚNA ZDE --- */}
                     <button 
                         onClick={() => {
-                            // 1. Přejdeme na hlavní stránku s parametrem ?service=ID a kotvou #kontakt
                             navigate(`/?service=${product.id}#kontakt`)
-                            
-                            // 2. Ruční scroll (pojistka, kdyby router ignoroval hash)
                             setTimeout(() => {
                                 const element = document.getElementById('kontakt');
                                 if (element) element.scrollIntoView({ behavior: 'smooth' });
@@ -109,27 +120,29 @@ export default function Services() {
             </div>
 
             {/* STRÁNKOVÁNÍ */}
-            <div className="flex justify-center items-center gap-6 mt-16">
-              <button 
-                onClick={prevPage} 
-                disabled={currentPage === 1}
-                className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              
-              <span className="text-slate-400 font-mono text-sm tracking-widest">
-                STRANA <span className="text-white font-bold">{currentPage}</span> / {totalPages}
-              </span>
+            {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-6 mt-16">
+                <button 
+                    onClick={prevPage} 
+                    disabled={currentPage === 1}
+                    className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5"
+                >
+                    <ChevronLeft className="w-5 h-5" />
+                </button>
+                
+                <span className="text-slate-400 font-mono text-sm tracking-widest">
+                    STRANA <span className="text-white font-bold">{currentPage}</span> / {totalPages}
+                </span>
 
-              <button 
-                onClick={nextPage} 
-                disabled={currentPage === totalPages}
-                className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
+                <button 
+                    onClick={nextPage} 
+                    disabled={currentPage === totalPages}
+                    className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5"
+                >
+                    <ChevronRight className="w-5 h-5" />
+                </button>
+                </div>
+            )}
           </>
         )}
       </section>
