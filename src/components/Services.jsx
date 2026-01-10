@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
-import { Code2, ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { Code2, ChevronLeft, ChevronRight, Check, Sparkles } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 export default function Services() {
@@ -8,7 +8,6 @@ export default function Services() {
   const [loading, setLoading] = useState(true)
   
   const navigate = useNavigate()
-  const location = useLocation()
 
   // --- NASTAVENÍ STRÁNKOVÁNÍ ---
   const [currentPage, setCurrentPage] = useState(1)
@@ -20,12 +19,10 @@ export default function Services() {
 
   async function getProducts() {
     try {
-      // ZMĚNA: Řadíme podle ID nebo data vytvoření (created_at), 
-      // protože řazení podle ceny (textu) by dělalo neplechu.
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .order('id', { ascending: true }) // Nebo .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
       
       if (error) throw error
       setProducts(data)
@@ -46,59 +43,68 @@ export default function Services() {
   const prevPage = () => { if (currentPage > 1) setCurrentPage(prev => prev - 1) }
 
   return (
-    <section id="sluzby" className="py-32 px-6 max-w-6xl mx-auto">
+    <section id="sluzby" className="py-32 px-6 max-w-7xl mx-auto">
         
-        {/* Čistší a modernější hlavička */}
         <div className="text-center mb-20">
-           <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-             Ceník Služeb
+           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-widest mb-4 border border-blue-500/20">
+              <Sparkles className="w-3 h-3"/> Ceník & Balíčky
+           </div>
+           <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
+             Investice do vaší <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">budoucnosti</span>
            </h2>
-           <p className="text-slate-400 max-w-2xl mx-auto text-lg">
-             Transparentní ceny bez skrytých poplatků. Vyberte si balíček, který nejlépe odpovídá vašim potřebám, nebo mi napište o individuální nabídku.
+           <p className="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">
+             Transparentní ceny. Žádné skryté poplatky. Vyberte si řešení, které vás posune dál.
            </p>
         </div>
         
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[1,2,3].map(i => (
-              <div key={i} className="h-96 rounded-2xl bg-white/5 animate-pulse"></div>
+              <div key={i} className="h-[500px] rounded-3xl bg-white/5 animate-pulse border border-white/5"></div>
             ))}
           </div>
         ) : (
           <>
-            {/* GRID SLUŽEB */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 min-h-[400px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {currentProducts.map((product) => (
-                <div key={product.id} className="group p-8 rounded-3xl bg-[#1e293b]/40 border border-white/5 hover:border-blue-500/50 hover:bg-[#1e293b]/60 transition duration-300 relative overflow-hidden flex flex-col h-full shadow-2xl hover:shadow-blue-900/20 hover:-translate-y-1">
+                <div key={product.id} className="group relative flex flex-col h-full bg-[#1e293b]/40 backdrop-blur-sm border border-white/5 rounded-3xl p-8 hover:border-blue-500/30 transition-all duration-300 hover:shadow-[0_0_40px_-10px_rgba(59,130,246,0.15)] hover:-translate-y-2 overflow-hidden">
                   
-                  {/* Efekt na pozadí */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10 transition group-hover:bg-blue-500/20"></div>
+                  {/* Dekorace na pozadí */}
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/5 rounded-full blur-3xl -mr-10 -mt-10 transition group-hover:bg-blue-500/10"></div>
                   
-                  {/* Ikona */}
-                  <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-8 text-blue-400 group-hover:scale-110 transition border border-blue-500/10">
-                    <Code2 className="w-7 h-7" />
-                  </div>
+                  {/* Hlavička karty */}
+                  <div className="mb-6 relative z-10">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center mb-6 text-blue-400 border border-white/5 group-hover:scale-110 transition duration-300 shadow-inner">
+                        <Code2 className="w-6 h-6" />
+                      </div>
+                      
+                      {/* Vykreslení TAGŮ (pokud existují) */}
+                      {product.tags && product.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-4">
+                              {product.tags.map((tag, i) => (
+                                  <span key={i} className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md bg-white/5 text-slate-400 border border-white/5">
+                                      {tag}
+                                  </span>
+                              ))}
+                          </div>
+                      )}
 
-                  {/* Název a Popis */}
-                  <h3 className="text-2xl font-bold mb-3 text-white group-hover:text-blue-400 transition">{product.name}</h3>
-                  <p className="text-slate-400 text-sm mb-8 leading-relaxed flex-1">
-                    {product.description || "Kompletní řešení na míru včetně nasazení a základní podpory."}
-                  </p>
+                      <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-blue-400 transition">{product.name}</h3>
+                      <p className="text-slate-400 text-sm leading-relaxed">
+                        {product.description || "Kompletní řešení na míru."}
+                      </p>
+                  </div>
                   
-                  {/* Cena a Tlačítko */}
-                  <div className="mt-auto border-t border-white/5 pt-8">
-                    <div className="flex items-end gap-1 mb-6">
-                        {/* ZMĚNA: Odstraněno .toLocaleString() a 'Kč' natvrdo. 
-                            Nyní se vypíše přesně to, co je v databázi (text). 
-                            Takže v DB můžeš mít: "4 500 - 7 000 Kč" nebo "Zdarma" */}
-                        <span className="text-3xl font-bold text-white">{product.price}</span>
-                        
-                        {/* Zobrazit "/ projekt" jen pokud to není "Zdarma" nebo "Dohodou", volitelně. 
-                            Zatím nechávám, ale můžeš to smazat, pokud to tam nechceš. */}
-                        <span className="text-slate-500 text-sm mb-1 ml-1 opacity-60 font-normal">
-                             {/* Pokud je v textu ceny číslo, zobrazíme / projekt, jinak nic */}
-                             {/\d/.test(product.price) ? '/ projekt' : ''}
-                        </span>
+                  {/* Cena a patička */}
+                  <div className="mt-auto pt-8 border-t border-white/5 relative z-10">
+                    <div className="mb-6">
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Cena balíčku</p>
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                            {/* Změna: whitespace-nowrap zabrání rozlomení ceny */}
+                            <span className="text-3xl font-bold text-white whitespace-nowrap">{product.price}</span>
+                            {/* Zobrazíme text za cenou jen pokud to dává smysl */}
+                            {/\d/.test(product.price) && <span className="text-sm text-slate-500 font-medium">/ projekt</span>}
+                        </div>
                     </div>
                     
                     <button 
@@ -109,7 +115,7 @@ export default function Services() {
                                 if (element) element.scrollIntoView({ behavior: 'smooth' });
                             }, 100);
                         }}
-                        className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 group/btn"
+                        className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2 group/btn"
                     >
                       Mám zájem
                       <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition" />
@@ -122,29 +128,13 @@ export default function Services() {
             {/* STRÁNKOVÁNÍ */}
             {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-6 mt-16">
-                <button 
-                    onClick={prevPage} 
-                    disabled={currentPage === 1}
-                    className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5"
-                >
-                    <ChevronLeft className="w-5 h-5" />
-                </button>
-                
-                <span className="text-slate-400 font-mono text-sm tracking-widest">
-                    STRANA <span className="text-white font-bold">{currentPage}</span> / {totalPages}
-                </span>
-
-                <button 
-                    onClick={nextPage} 
-                    disabled={currentPage === totalPages}
-                    className="p-3 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5"
-                >
-                    <ChevronRight className="w-5 h-5" />
-                </button>
+                    <button onClick={prevPage} disabled={currentPage === 1} className="p-4 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5 backdrop-blur-sm"><ChevronLeft className="w-5 h-5" /></button>
+                    <span className="text-slate-400 font-mono text-sm tracking-widest">STRANA <span className="text-white font-bold">{currentPage}</span> / {totalPages}</span>
+                    <button onClick={nextPage} disabled={currentPage === totalPages} className="p-4 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white border border-white/5 backdrop-blur-sm"><ChevronRight className="w-5 h-5" /></button>
                 </div>
             )}
           </>
         )}
-      </section>
+    </section>
   )
 }
