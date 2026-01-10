@@ -134,15 +134,7 @@ export default function Navbar() {
 
               <div className="h-px bg-white/10 my-2"></div>
 
-              {user ? (
-                  <a href="/admin" className="flex items-center justify-center gap-2 w-full py-3 bg-green-600/20 text-green-400 border border-green-500/20 font-bold rounded-xl">
-                      <LayoutDashboard className="w-4 h-4" /> Správa Webu
-                  </a>
-              ) : (
-                  <a href="/login" className="flex items-center justify-center gap-2 w-full py-3 bg-white/5 text-slate-400 font-bold rounded-xl hover:bg-white/10">
-                      <Lock className="w-4 h-4" /> Přihlášení
-                  </a>
-              )}
+             
             </motion.div>
           )}
         </AnimatePresence>
