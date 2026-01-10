@@ -38,7 +38,7 @@ export default function Navbar() {
 
   const links = [
     { name: 'Služby', id: 'sluzby' },
-    { name: 'Portfolio', id: 'portfolio' },
+    { name: 'Projekty', id: 'portfolio' },
     { name: 'Tech Stack', id: 'tech' },
   ]
 

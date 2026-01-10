@@ -1,7 +1,23 @@
 import { Zap, Layout, Code2, Database, ShieldCheck, Server } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useNavigate, useLocation } from 'react-router-dom' // 1. Import hooků
 
 export default function Hero() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // 2. Funkce pro chytré scrollování (stejná logika jako v Navbaru)
+  const scrollToSection = (sectionId) => {
+    if (location.pathname === '/') {
+      const element = document.getElementById(sectionId)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' })
+      }
+    } else {
+      navigate(`/#${sectionId}`)
+    }
+  }
+
   return (
     <>
       <header className="pt-48 pb-32 px-6 text-center max-w-5xl mx-auto relative">
@@ -21,7 +37,7 @@ export default function Hero() {
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }} // Zpoždění 0.1s
+          transition={{ duration: 0.5, delay: 0.1 }}
           className="text-5xl md:text-7xl font-extrabold mb-8 leading-tight tracking-tight"
         >
           Stavím digitální produkty <br />
@@ -39,25 +55,34 @@ export default function Hero() {
          Přetvářím nápady v moderní webové aplikace pomocí <strong>Reactu a cloudových technologií.</strong>
        </motion.p>
         
-        {/* Tlačítka */}
+        {/* Tlačítka - ZMĚNĚNO NA BUTTON A PŘIDÁNO ONCLICK */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
           className="flex flex-col sm:flex-row justify-center gap-4"
         >
-          <a href="#sluzby" className="px-8 py-4 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold transition transform hover:scale-105 shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2">
+          {/* Tlačítko Spolupracovat -> směřuje na kontakt (nebo služby, podle preferencí) */}
+          <button 
+            onClick={() => scrollToSection('sluzby')} 
+            className="px-8 py-4 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold transition transform hover:scale-105 shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer text-white"
+          >
             <Zap className="w-5 h-5" />
             Spolupracovat
-          </a>
-          <a href="#portfolio" className="px-8 py-4 bg-[#1e293b] hover:bg-[#283548] border border-white/10 rounded-xl font-bold transition flex items-center justify-center gap-2">
+          </button>
+
+          {/* Tlačítko Moje práce -> směřuje na portfolio */}
+          <button 
+            onClick={() => scrollToSection('portfolio')} 
+            className="px-8 py-4 bg-[#1e293b] hover:bg-[#283548] border border-white/10 rounded-xl font-bold transition flex items-center justify-center gap-2 cursor-pointer text-white"
+          >
             <Layout className="w-5 h-5" />
             Moje práce
-          </a>
+          </button>
         </motion.div>
       </header>
 
-      {/* Tech Stack - Postupné objevování ikon */}
+      {/* Tech Stack */}
       <section id="tech" className="py-10 border-y border-white/5 bg-white/5 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 text-center">
           <p className="text-sm text-slate-500 uppercase tracking-widest mb-8">Používané technologie</p>
@@ -71,7 +96,7 @@ export default function Hero() {
                <motion.div 
                  key={index}
                  initial={{ opacity: 0, scale: 0.5 }}
-                 whileInView={{ opacity: 1, scale: 1 }} // Animuje se až když na to scroluješ
+                 whileInView={{ opacity: 1, scale: 1 }}
                  transition={{ delay: index * 0.1 }}
                  className="flex items-center gap-2 text-xl font-bold"
                >
