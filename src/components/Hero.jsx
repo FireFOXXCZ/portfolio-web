@@ -46,7 +46,7 @@ export default function Hero() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="flex flex-col sm:flex-row justify-center gap-4"
         >
-          <a href="sluzby" className="px-8 py-4 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold transition transform hover:scale-105 shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2">
+          <a href="#sluzby" className="px-8 py-4 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold transition transform hover:scale-105 shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2">
             <Zap className="w-5 h-5" />
             Spolupracovat
           </a>

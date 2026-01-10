@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import { Send, CheckCircle2, Loader2, Mail, MapPin } from 'lucide-react'
-import { motion } from 'framer-motion'
 
 export default function Contact() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' })
@@ -11,12 +10,22 @@ export default function Contact() {
     e.preventDefault()
     setStatus('loading')
 
+    // --- OPRAVA ZDE ---
+    // Musíme zprávě říct, do jaké složky patří (zde natvrdo ID 1 = Inbox).
+    // Pokud ID 1 v tabulce 'folders' neexistuje, zpráva se neodešle.
+    const messageData = {
+      ...formData,
+      folder_id: 1, // DŮLEŽITÉ: Tady nastavujeme složku
+      is_read: false // Pro jistotu nastavíme explicitně jako nepřečtené
+    }
+
     // Odeslání do Supabase
     const { error } = await supabase
       .from('messages')
-      .insert([formData])
+      .insert([messageData])
 
     if (error) {
+      console.error('Chyba při odesílání:', error)
       alert('Chyba: ' + error.message)
       setStatus('error')
     } else {

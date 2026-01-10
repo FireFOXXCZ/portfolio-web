@@ -1,7 +1,7 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, FolderKanban, ShoppingBag, Trash2, Plus, Loader2, Pencil, Home, X, AlertTriangle, Save, Search, Upload, Maximize2, ChevronLeft, ChevronRight, AtSign, Folder, FolderPlus, Inbox, Archive, Clock, CheckSquare, GripVertical, CheckCircle2, Eye, CheckCheck, RefreshCw, Filter, ListFilter } from 'lucide-react'
+import { LogOut, FolderKanban, ShoppingBag, Trash2, Plus, Loader2, Pencil, Home, X, AlertTriangle, Save, Search, Upload, ChevronLeft, ChevronRight, AtSign, Folder, FolderPlus, Inbox, Archive, Clock, CheckSquare, GripVertical, CheckCircle2, Eye, CheckCheck, RefreshCw } from 'lucide-react'
 
 export default function Admin() {
   const navigate = useNavigate()
@@ -53,17 +53,11 @@ export default function Admin() {
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
 
-  const stats = {
-      total: totalItems, 
-      value: activeTab === 'services' ? items.reduce((acc, item) => acc + (item.price || 0), 0) : 0
-  }
-
   const currentFolderUnread = activeTab === 'messages' ? (unreadCounts[activeFolderId] || 0) : 0;
   const statusColor = currentFolderUnread > 0 ? 'bg-red-500 shadow-[0_0_10px_red]' : 'bg-green-500 shadow-[0_0_10px_lime]';
 
   // --- INIT & REALTIME ---
   useEffect(() => {
-    // Skrytí Crisp chatu při načtení Adminu
     if (window.$crisp) { window.$crisp.push(['do', 'chat:hide']); }
 
     const init = async () => {
@@ -74,19 +68,24 @@ export default function Admin() {
     }
     init()
 
+    // REALTIME LISTENER
     const channel = supabase
       .channel('global-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
-          console.log('🔔 Změna v DB:', payload)
+          console.log('🔔 REALTIME UPDATE:', payload)
+          // Okamžitá aktualizace počítadel i seznamu
           fetchUnreadCounts()
-          setRefreshTrigger(prev => prev + 1)
+          setRefreshTrigger(prev => prev + 1) 
+          
+          if (payload.eventType === 'INSERT') {
+             showToast('Nová zpráva!')
+          }
         }
       )
       .subscribe()
 
     return () => { 
         supabase.removeChannel(channel)
-        // Zobrazení Crisp chatu při odchodu z Adminu
         if (window.$crisp) { window.$crisp.push(['do', 'chat:show']); }
     }
   }, [])
@@ -94,7 +93,12 @@ export default function Admin() {
   // --- FETCH DATA ---
   useEffect(() => {
       if (activeTab === 'messages' && !activeFolderId) return 
-      fetchData()
+      
+      // Pokud je to první načtení nebo změna tabu/složky, ukaž loading. 
+      // Pokud je to jen Realtime refresh (refreshTrigger > 0), loading neukazuj, ať to neproblikává.
+      const isBackgroundRefresh = refreshTrigger > 0;
+      fetchData(!isBackgroundRefresh) 
+      
   }, [activeTab, activeFolderId, refreshTrigger, filterStatus, currentPage, searchTerm]) 
 
   useEffect(() => { setCurrentPage(1) }, [activeFolderId, filterStatus, activeTab])
@@ -113,12 +117,14 @@ export default function Admin() {
       const { data } = await supabase.from('folders').select('*').order('id', { ascending: true })
       if (data && data.length > 0) {
           setFolders(data)
+          // Nastavíme první složku jako aktivní, pokud žádná není
           if (!activeFolderId) setActiveFolderId(data[0].id)
       }
   }
 
-  async function fetchData() {
-    setLoading(true)
+  async function fetchData(showLoading = true) {
+    if (showLoading) setLoading(true)
+    
     let query;
 
     if (activeTab === 'messages') {
@@ -342,8 +348,7 @@ export default function Admin() {
                     ))}
                 </div>
                 
-                {/* --- STRÁNKOVÁNÍ ZDE --- */}
-                {/* Vždy zobrazit stránkování (pokud nejsou data prázdná, což řeší podmínka výše) */}
+                {/* --- STRÁNKOVÁNÍ --- */}
                 <div className="flex justify-between items-center mt-8 pt-6 border-t border-white/5">
                     <p className="text-sm text-slate-500">Zobrazeno {items.length} z {totalItems} zpráv</p>
                     <div className="flex gap-2">
@@ -355,7 +360,7 @@ export default function Admin() {
             </>
         ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
-                {items.map(item => { /* Zobrazovani projektu (zkraceno - stejne jako minule) */
+                {items.map(item => { 
                     let thumb = null; if (activeTab === 'projects') { const gallery = item.images || (item.image_url ? [item.image_url] : []); thumb = gallery[0] }
                     return <div key={item.id} className="group relative bg-[#1e293b]/40 backdrop-blur-xl border border-white/5 hover:border-indigo-500/30 rounded-2xl p-5 transition-all duration-300 flex flex-col gap-4 overflow-hidden"><div className="w-full aspect-video rounded-xl bg-[#0f172a] relative overflow-hidden group cursor-pointer border border-white/5" onClick={() => thumb && openLightbox(item.images || [], 0)}>{thumb ? <img src={thumb} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition"/> : <div className="w-full h-full flex flex-col items-center justify-center text-slate-600"><FolderKanban className="w-12 h-12 opacity-20"/></div>}</div><div className="flex-1 flex flex-col"><h3 className="font-bold text-lg text-white mb-1">{item.name || item.title}</h3><p className="text-sm text-slate-400 line-clamp-2 mb-4 flex-1">{item.description}</p><div className="flex gap-2 border-t border-white/5 pt-4 mt-auto"><button onClick={() => openEdit(item)} className="flex-1 py-2 bg-white/5 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-lg text-xs font-bold uppercase tracking-wider">Upravit</button><button onClick={() => confirmDel(item)} className="px-3 py-2 bg-white/5 hover:bg-red-600 hover:text-white text-slate-400 rounded-lg"><Trash2 className="w-4 h-4"/></button></div></div></div>
                 })}
@@ -370,7 +375,7 @@ export default function Admin() {
       {lightboxOpen && (<div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-200" onClick={() => setLightboxOpen(false)}><button className="absolute top-6 right-6 text-slate-400 hover:text-white p-2 z-50 rounded-full hover:bg-white/10 transition"><X className="w-10 h-10"/></button><div className="relative w-full h-full flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>{lightboxImages.length > 1 && <button onClick={prevImage} className="absolute left-4 md:left-10 p-4 bg-black/50 hover:bg-indigo-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 border border-white/10"><ChevronLeft className="w-8 h-8"/></button>}<img src={lightboxImages[lightboxIndex]} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300" />{lightboxImages.length > 1 && <button onClick={nextImage} className="absolute right-4 md:right-10 p-4 bg-black/50 hover:bg-indigo-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 border border-white/10"><ChevronRight className="w-8 h-8"/></button>}<div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/60 px-6 py-2 rounded-full text-white text-sm font-medium backdrop-blur-md border border-white/10 shadow-lg">{lightboxIndex + 1} / {lightboxImages.length}</div></div></div>)}
       {isFormOpen && activeTab !== 'messages' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity" onClick={() => setIsFormOpen(false)}></div><div className="bg-[#0f172a] border border-white/10 rounded-3xl w-full max-w-3xl relative z-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 ring-1 ring-white/10"><div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#162032]"><h3 className="text-xl font-bold flex items-center gap-3 text-white"><div className={`p-2.5 rounded-xl ${isEditing ? 'bg-indigo-500/20 text-indigo-400' : 'bg-green-500/20 text-green-400'}`}>{isEditing ? <Pencil className="w-5 h-5"/> : <Plus className="w-5 h-5"/>}</div>{isEditing ? 'Upravit záznam' : 'Nový záznam'}</h3><button onClick={() => setIsFormOpen(false)} className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition"><X className="w-6 h-6"/></button></div><div className="p-8 overflow-y-auto custom-scrollbar"><form id="dataForm" onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="space-y-2 md:col-span-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Název</label><input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition text-lg font-medium placeholder:text-slate-600"/></div>{activeTab === 'services' ? (<div className="space-y-2 md:col-span-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Cena (Kč)</label><input type="number" required value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition font-mono text-lg"/></div>) : (<><div className="space-y-2 md:col-span-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Galerie <span className="text-indigo-400 font-normal normal-case opacity-70 ml-2">Ctrl+V nebo Drag & Drop</span></label><div className={`relative border-2 border-dashed rounded-2xl transition-all duration-200 mb-6 ${isDragging ? 'border-indigo-500 bg-indigo-500/10 scale-[1.01]' : 'border-white/10 bg-[#1e293b] hover:bg-white/5'}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}><input type="file" multiple onChange={handleFileInputChange} className="hidden" id="file-upload" accept="image/*" /><label htmlFor="file-upload" className="w-full h-full p-10 flex flex-col items-center justify-center gap-3 cursor-pointer">{isUploading ? <Loader2 className="animate-spin w-10 h-10 text-indigo-500"/> : <Upload className={`w-10 h-10 ${isDragging ? 'text-indigo-500' : 'text-slate-500'}`}/>}<div className="text-center"><p className={`font-medium ${isDragging ? 'text-indigo-400' : 'text-slate-300'}`}>{isUploading ? 'Nahrávám...' : 'Klikni nebo přetáhni obrázky'}</p><p className="text-xs text-slate-500 mt-1">Podpora JPG, PNG, WEBP</p></div></label></div>{formData.images.length > 0 && (<div className="grid grid-cols-5 gap-3">{formData.images.map((imgUrl, index) => (<div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group shadow-sm"><img src={imgUrl} className="w-full h-full object-cover" /><button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-black/60 hover:bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition backdrop-blur-sm"><X className="w-3 h-3"/></button>{index === 0 && <div className="absolute bottom-0 inset-x-0 bg-indigo-600/90 text-[9px] text-center text-white py-0.5 font-bold uppercase tracking-wider backdrop-blur-sm">Cover</div>}</div>))}</div>)}</div><div className="space-y-2 md:col-span-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Tagy</label><div className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-3 flex flex-wrap gap-2 items-center min-h-[60px] focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition">{formData.tags.map((tag, index) => (<span key={index} className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 font-medium">{tag}<button type="button" onClick={() => removeTag(tag)} className="hover:text-white"><X className="w-3 h-3"/></button></span>))}<input type="text" placeholder="Nový tag (Enter)..." value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (tagInput.trim()) { setFormData({...formData, tags: [...formData.tags, tagInput.trim()]}); setTagInput('') } } }} className="bg-transparent outline-none text-white flex-1 h-8 placeholder:text-slate-600"/></div></div></>)}<div className="md:col-span-2 space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Popis</label><textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white h-40 resize-none leading-relaxed placeholder:text-slate-600"/></div></form></div><div className="p-6 border-t border-white/10 bg-[#162032] flex justify-end gap-3"><button onClick={() => setIsFormOpen(false)} className="px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl font-bold transition">Zrušit</button><button form="dataForm" disabled={isSubmitting || isUploading} className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50 transform hover:scale-[1.02] active:scale-[0.98]">{isSubmitting ? <Loader2 className="animate-spin w-5 h-5"/> : <Save className="w-5 h-5"/>}{isEditing ? 'Uložit změny' : 'Vytvořit záznam'}</button></div></div></div>
-      )}
-    </div>
-  )
+      )}
+    </div>
+  )
 }
