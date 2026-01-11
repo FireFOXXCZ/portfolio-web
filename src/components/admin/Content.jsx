@@ -1,4 +1,5 @@
-import { GripVertical, AtSign, Briefcase, Eye, CheckCircle2, Trash2, Pencil, MonitorPlay, ExternalLink, Star, ThumbsUp, ThumbsDown, FolderKanban, ArrowUp } from 'lucide-react'
+import { GripVertical, AtSign, Briefcase, Eye, CheckCircle2, Trash2, Pencil, MonitorPlay, ExternalLink, Star, ThumbsUp, ThumbsDown, FolderKanban, ArrowUp, Tag, ChevronLeft, ChevronRight, X, Images } from 'lucide-react'
+import { useState } from 'react'
 
 export function MessagesList({ items, allowDrag, setAllowDrag, handleDragStart, markAsRead, confirmDel, copyToClipboard }) {
     return (
@@ -18,7 +19,6 @@ export function MessagesList({ items, allowDrag, setAllowDrag, handleDragStart, 
                                 </div>
                             </div>
                             <div className="md:ml-auto flex flex-wrap items-center gap-2">
-                                 {/* Logika pro zobrazení služby nebo obecného dotazu */}
                                  {msg.products?.name ? (
                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 uppercase tracking-wider">
                                          <Briefcase className="w-3 h-3"/> {msg.products.name}
@@ -89,26 +89,121 @@ export function ServicesTable({ items, openEdit, confirmDel }) {
     )
 }
 
-export function ProjectsGrid({ items, openEdit, confirmDel, openLightbox }) {
+export function ProjectsGrid({ items, openEdit, confirmDel }) {
+    const [lightbox, setLightbox] = useState({ open: false, images: [], index: 0 });
+
+    const openGallery = (images, index = 0) => {
+        setLightbox({ open: true, images: images, index: index });
+    };
+
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
-            {items.map(item => {
-                const thumb = item.images?.[0] || item.image_url;
-                return (
-                    <div key={item.id} className="group bg-[#1e293b]/40 backdrop-blur-xl border border-white/5 rounded-2xl p-5 transition-all">
-                        <div className="w-full aspect-video rounded-xl bg-[#0f172a] mb-4 overflow-hidden border border-white/5 cursor-pointer" onClick={() => thumb && openLightbox(item.images || [thumb], 0)}>
-                            {thumb ? <img src={thumb} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-500"/> : <div className="w-full h-full flex items-center justify-center text-slate-700"><FolderKanban className="w-12 h-12 opacity-20"/></div>}
+        <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
+                {items.map(item => {
+                    const images = item.images || [];
+                    const thumb = images[0] || item.image_url;
+                    const hasMore = images.length > 1;
+
+                    return (
+                        <div key={item.id} className="group bg-[#1e293b]/40 backdrop-blur-xl border border-white/5 rounded-2xl p-5 transition-all flex flex-col h-full relative">
+                            <div className="relative mb-4 shrink-0">
+                                {hasMore && (
+                                    <div className="absolute -bottom-1 -right-1 w-full h-full bg-indigo-500/20 rounded-xl -z-10 translate-x-1 translate-y-1"></div>
+                                )}
+                                <div 
+                                    className="w-full aspect-video rounded-xl bg-[#0f172a] overflow-hidden border border-white/5 cursor-pointer relative group/img"
+                                    onClick={() => thumb && openGallery(images.length > 0 ? images : [thumb])}
+                                >
+                                    {thumb ? (
+                                        <>
+                                            <img src={thumb} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-500" alt={item.title}/>
+                                            {hasMore && (
+                                                <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-bold text-white flex items-center gap-1 border border-white/10">
+                                                    <Images className="w-3 h-3" />
+                                                    +{images.length - 1}
+                                                </div>
+                                            )}
+                                            <div className="absolute inset-0 bg-indigo-600/0 group-hover/img:bg-indigo-600/10 transition-colors flex items-center justify-center">
+                                                <Eye className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity w-8 h-8" />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-slate-700">
+                                            <FolderKanban className="w-12 h-12 opacity-20"/>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <h3 className="font-bold text-lg text-white mb-2">{item.title}</h3>
+                            
+                            {item.tags && item.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {item.tags.map((tag, idx) => (
+                                        <span key={idx} className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/10 uppercase tracking-tight flex items-center gap-1">
+                                            <Tag className="w-2 h-2" /> {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            
+                            <p className="text-sm text-slate-400 line-clamp-2 mb-6 flex-1">{item.description}</p>
+                            
+                            <div className="flex gap-2 mt-auto">
+                                <button onClick={() => openEdit(item)} className="flex-1 py-2 bg-white/5 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-lg text-xs font-bold uppercase transition">Upravit</button>
+                                <button onClick={() => confirmDel(item)} className="px-3 py-2 bg-white/5 hover:bg-red-600 hover:text-white text-slate-400 rounded-lg transition"><Trash2 className="w-4 h-4"/></button>
+                            </div>
                         </div>
-                        <h3 className="font-bold text-lg text-white mb-2">{item.title}</h3>
-                        <p className="text-sm text-slate-400 line-clamp-2 mb-6">{item.description}</p>
-                        <div className="flex gap-2">
-                            <button onClick={() => openEdit(item)} className="flex-1 py-2 bg-white/5 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-lg text-xs font-bold uppercase transition">Upravit</button>
-                            <button onClick={() => confirmDel(item)} className="px-3 py-2 bg-white/5 hover:bg-red-600 hover:text-white text-slate-400 rounded-lg transition"><Trash2 className="w-4 h-4"/></button>
+                    )
+                })}
+            </div>
+
+            {/* LIGHTBOX MODAL - PŘIDÁNO z-[100] ABY PŘEKRYLO SIDEBAR */}
+            {lightbox.open && (
+                <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300">
+                    <button 
+                        onClick={() => setLightbox({ ...lightbox, open: false })}
+                        className="absolute top-6 right-6 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all z-[110]"
+                    >
+                        <X className="w-8 h-8" />
+                    </button>
+
+                    <div className="relative w-full h-full flex items-center justify-center p-4 md:p-12" onClick={() => setLightbox({ ...lightbox, open: false })}>
+                        <div className="relative max-w-5xl max-h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                            {lightbox.images.length > 1 && (
+                                <>
+                                    <button 
+                                        onClick={() => setLightbox(prev => ({ ...prev, index: (prev.index - 1 + prev.images.length) % prev.images.length }))}
+                                        className="absolute -left-4 md:-left-20 p-4 bg-white/5 hover:bg-indigo-600 rounded-2xl text-white transition-all z-[110] backdrop-blur-md border border-white/5"
+                                    >
+                                        <ChevronLeft className="w-8 h-8" />
+                                    </button>
+                                    <button 
+                                        onClick={() => setLightbox(prev => ({ ...prev, index: (prev.index + 1) % prev.images.length }))}
+                                        className="absolute -right-4 md:-right-20 p-4 bg-white/5 hover:bg-indigo-600 rounded-2xl text-white transition-all z-[110] backdrop-blur-md border border-white/5"
+                                    >
+                                        <ChevronRight className="w-8 h-8" />
+                                    </button>
+                                </>
+                            )}
+
+                            <img 
+                                src={lightbox.images[lightbox.index]} 
+                                className="max-w-full max-h-[85vh] md:max-h-[90vh] object-contain rounded-xl shadow-2xl animate-in zoom-in-95 duration-300 border border-white/5" 
+                                alt="Preview"
+                            />
+
+                            {/* Indikátor pozice v galerii */}
+                            {lightbox.images.length > 1 && (
+                                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-white text-sm font-bold tracking-widest font-mono">
+                                    {lightbox.index + 1} / {lightbox.images.length}
+                                </div>
+                            )}
                         </div>
                     </div>
-                )
-            })}
-        </div>
+                </div>
+            )}
+        </>
     )
 }
 
