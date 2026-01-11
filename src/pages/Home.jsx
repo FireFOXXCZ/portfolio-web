@@ -4,11 +4,13 @@ import Services from '../components/Services'
 import Footer from '../components/Footer'
 import Portfolio from '../components/Portfolio'
 import Contact from '../components/Contact'
-import Reviews from '../components/Reviews' // 1. Import nové komponenty
+import Reviews from '../components/Reviews'
+import GlobalAvailability from '../components/GlobalAvailability' 
+import LiveDemos from '../components/LiveDemos'
 
 function Home() {
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white font-sans overflow-x-hidden selection:bg-blue-500 selection:text-white">
+    <div className="min-h-screen bg-[#0f172a] text-white font-sans overflow-x-hidden selection:bg-blue-500 selection:text-white relative">
       
       {/* Pozadí */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
@@ -20,11 +22,13 @@ function Home() {
       <Hero />
       <Services />
       <Portfolio />
-      
-      <Reviews /> {/* 2. Vložení komponenty sem */}
-      
+      <LiveDemos />
+      <Reviews /> 
       <Contact />
       <Footer />
+
+      
+      <GlobalAvailability /> 
 
     </div>
   )

@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, FolderKanban, ShoppingBag, Trash2, Plus, Loader2, Pencil, Home, X, AlertTriangle, Save, Search, Upload, ChevronLeft, ChevronRight, AtSign, Folder, FolderPlus, Inbox, Archive, Clock, CheckSquare, GripVertical, CheckCircle2, Eye, CheckCheck, RefreshCw, Star, ThumbsUp, ThumbsDown, Menu, Briefcase, ArrowUp } from 'lucide-react'
+import { LogOut, FolderKanban, ShoppingBag, Trash2, Plus, Loader2, Pencil, Home, X, AlertTriangle, Save, Search, Upload, ChevronLeft, ChevronRight, AtSign, Folder, FolderPlus, Inbox, Archive, Clock, CheckSquare, GripVertical, CheckCircle2, Eye, CheckCheck, RefreshCw, Star, ThumbsUp, ThumbsDown, Menu, Briefcase, ArrowUp, Calendar as CalendarIcon, Clock as ClockIcon, MonitorPlay, ExternalLink } from 'lucide-react'
 
 export default function Admin() {
   const navigate = useNavigate()
-  
+   
   // --- STAVY ---
   const [activeTab, setActiveTab] = useState('projects') 
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  
+   
   // REALTIME TRIGGER
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
@@ -19,12 +19,12 @@ export default function Admin() {
   const [filterStatus, setFilterStatus] = useState('all') 
   const [currentPage, setCurrentPage] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
-  const ITEMS_PER_PAGE = activeTab === 'services' ? 10 : 5 // Pro tabulku zobrazíme více položek
+  const ITEMS_PER_PAGE = activeTab === 'services' ? 10 : 5 
 
   // POČÍTADLA & UI
   const [unreadCounts, setUnreadCounts] = useState({})      
   const [pendingReviewsCount, setPendingReviewsCount] = useState(0) 
-  
+   
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
@@ -33,7 +33,7 @@ export default function Admin() {
   const [activeFolderId, setActiveFolderId] = useState(null)
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
-  
+   
   // Drag & Drop
   const [draggedMessage, setDraggedMessage] = useState(null)
   const [dragOverFolderId, setDragOverFolderId] = useState(null) 
@@ -47,8 +47,13 @@ export default function Admin() {
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [itemToDelete, setItemToDelete] = useState(null)
 
+  // --- KALENDÁŘ STAVY ---
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [calendarEvents, setCalendarEvents] = useState([])
+  const [selectedDate, setSelectedDate] = useState(null)
+
   // Form Data
-  const initialFormState = { id: null, title: '', price: '', description: '', images: [], tags: [] }
+  const initialFormState = { id: null, title: '', price: '', description: '', images: [], tags: [], start_time: '', end_time: '', type: 'morning', url: '' }
   const [formData, setFormData] = useState(initialFormState)
   const [tagInput, setTagInput] = useState('') 
   const [isEditing, setIsEditing] = useState(false)
@@ -81,10 +86,15 @@ export default function Admin() {
         }
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, (payload) => {
-          console.log('🔔 REALTIME UPDATE (Reviews):', payload)
           fetchUnreadCounts()
           if (activeTab === 'reviews') setRefreshTrigger(prev => prev + 1)
           if (payload.eventType === 'INSERT') showToast('Nová recenze ke schválení!')
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, (payload) => {
+         if (activeTab === 'calendar') setRefreshTrigger(prev => prev + 1)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_demos' }, (payload) => {
+         if (activeTab === 'demos') setRefreshTrigger(prev => prev + 1)
       })
       .subscribe()
 
@@ -100,14 +110,36 @@ export default function Admin() {
       
       const isBackgroundRefresh = refreshTrigger > 0;
       
-      fetchData(!isBackgroundRefresh) 
+      if (activeTab === 'calendar') {
+        fetchCalendarEvents()
+      } else {
+        fetchData(!isBackgroundRefresh) 
+      }
       fetchUnreadCounts()
 
-  }, [activeTab, activeFolderId, refreshTrigger, filterStatus, currentPage, searchTerm]) 
+  }, [activeTab, activeFolderId, refreshTrigger, filterStatus, currentPage, searchTerm, currentDate]) 
 
   useEffect(() => { setCurrentPage(1) }, [activeFolderId, filterStatus, activeTab])
 
   // --- DATA OPERATIONS ---
+  async function fetchCalendarEvents() {
+    setLoading(true)
+    const year = currentDate.getFullYear()
+    const month = currentDate.getMonth()
+    
+    // Načteme události pro aktuální měsíc (plus minus pár dní pro přetečení)
+    const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .gte('start_time', new Date(year, month - 1, 20).toISOString()) 
+        .lte('end_time', new Date(year, month + 2, 10).toISOString())
+    
+    if (!error) {
+        setCalendarEvents(data || [])
+    }
+    setLoading(false)
+  }
+
   async function fetchUnreadCounts() {
       // 1. Zprávy
       const { data: msgData } = await supabase.from('messages').select('folder_id').eq('is_read', false)
@@ -151,6 +183,12 @@ export default function Admin() {
         if (searchTerm) query = query.or(`name.ilike.%${searchTerm}%,text.ilike.%${searchTerm}%`)
         query = query.order('is_approved', { ascending: true }).order('created_at', { ascending: false })
 
+    } else if (activeTab === 'demos') {
+        // --- LIVE DEMOS ---
+        query = supabase.from('live_demos').select('*', { count: 'exact' })
+        if (searchTerm) query = query.ilike('title', `%${searchTerm}%`)
+        query = query.order('created_at', { ascending: false })
+
     } else {
         // --- PROJEKTY A SLUŽBY ---
         const table = activeTab === 'services' ? 'products' : 'projects'
@@ -158,10 +196,8 @@ export default function Admin() {
 
         // Řazení
         if (activeTab === 'services') {
-            // SLUŽBY: Od nejlevnějšího (price ASC)
             query = query.order('price', { ascending: true })
         } else {
-            // PROJEKTY: Od nejnovějšího
             query = query.order('created_at', { ascending: false })
         }
 
@@ -227,6 +263,8 @@ export default function Admin() {
       if (activeTab === 'projects') table = 'projects';
       if (activeTab === 'services') table = 'products';
       if (activeTab === 'reviews') table = 'reviews';
+      if (activeTab === 'calendar') table = 'calendar_events'; 
+      if (activeTab === 'demos') table = 'live_demos';
 
       const { error } = await supabase.from(table).delete().eq('id', itemToDelete.id)
       
@@ -234,7 +272,11 @@ export default function Admin() {
           console.error("Chyba při mazání:", error)
           showToast("Chyba: " + error.message, 'error')
       } else {
-          setItems(prev => prev.filter(item => item.id !== itemToDelete.id))
+          if (activeTab === 'calendar') {
+             setCalendarEvents(prev => prev.filter(e => e.id !== itemToDelete.id))
+          } else {
+             setItems(prev => prev.filter(item => item.id !== itemToDelete.id))
+          }
           showToast("Položka smazána", 'success')
           setRefreshTrigger(prev => prev + 1)
           fetchUnreadCounts()
@@ -271,21 +313,104 @@ export default function Admin() {
   const removeTag = (tagToRemove) => setFormData(prev => ({ ...prev, tags: prev.tags.filter(tag => tag !== tagToRemove) }))
   const getFolderIcon = (icon) => { const icons = { inbox: Inbox, check: CheckSquare, archive: Archive, clock: Clock }; const Icon = icons[icon] || Folder; return <Icon className="w-4 h-4"/> }
   
-  const openAdd = () => { setFormData(initialFormState); setTagInput(''); setIsEditing(false); setIsFormOpen(true) }
-  const openEdit = (item) => { setIsEditing(true); setTagInput(''); setIsFormOpen(true); const images = item.images?.length ? item.images : (item.image_url ? [item.image_url] : []); setFormData({ id: item.id, title: item.name || item.title, price: item.price, description: item.description, images, tags: item.tags || [] }) }
+  // --- OPRAVA DATA ---
+  const toLocalISOString = (date) => {
+    const offset = date.getTimezoneOffset() * 60000;
+    const localDate = new Date(date.getTime() - offset);
+    return localDate.toISOString().slice(0, 16);
+  };
+
+  const openAdd = (dateOverride = null) => { 
+      const now = new Date();
+      // Default na zítra 6:00 - 18:00
+      let startBase = new Date(now); startBase.setDate(now.getDate() + 1);
+      let endBase = new Date(now); endBase.setDate(now.getDate() + 1);
+
+      // POKUD JE PŘEDÁNO DATUM Z KLIKNUTÍ (dateOverride), POUŽIJEME HO
+      const targetDate = dateOverride || (activeTab === 'calendar' ? selectedDate : null);
+
+      if (activeTab === 'calendar' && targetDate) {
+         startBase = new Date(targetDate);
+         endBase = new Date(targetDate);
+      }
+      
+      startBase.setHours(6, 0, 0, 0);
+      endBase.setHours(18, 0, 0, 0);
+
+      // Použijeme toLocalISOString místo toISOString
+      setFormData({ 
+          ...initialFormState, 
+          start_time: toLocalISOString(startBase),
+          end_time: toLocalISOString(endBase),
+          type: 'morning'
+      }); 
+      setTagInput(''); 
+      setIsEditing(false); 
+      setIsFormOpen(true) 
+  }
+
+  const openEdit = (item) => { 
+      setIsEditing(true); 
+      setTagInput(''); 
+      setIsFormOpen(true); 
+      
+      if (activeTab === 'calendar') {
+          const start = item.start_time ? toLocalISOString(new Date(item.start_time)) : '';
+          const end = item.end_time ? toLocalISOString(new Date(item.end_time)) : '';
+          setFormData({
+              id: item.id,
+              title: item.title,
+              description: item.description,
+              start_time: start,
+              end_time: end,
+              type: item.type,
+              images: [], tags: []
+          })
+      } else if (activeTab === 'demos') {
+          // Editace Live Demos
+          setFormData({
+              id: item.id,
+              title: item.title,
+              url: item.url,
+              description: item.description,
+              images: [], tags: []
+          })
+      } else {
+        const images = item.images?.length ? item.images : (item.image_url ? [item.image_url] : []); 
+        setFormData({ id: item.id, title: item.name || item.title, price: item.price, description: item.description, images, tags: item.tags || [] }) 
+      }
+  }
   
   const handleSave = async (e) => { 
       e.preventDefault(); 
       setIsSubmitting(true); 
-      const table = activeTab === 'services' ? 'products' : 'projects'; 
-      const payload = activeTab === 'services' 
-        ? { name: formData.title, price: formData.price, description: formData.description, tags: formData.tags } 
-        : { title: formData.title, description: formData.description, images: formData.images, image_url: formData.images[0]||null, tags: formData.tags }; 
+      let table = activeTab === 'services' ? 'products' : 'projects'; 
+      if (activeTab === 'calendar') table = 'calendar_events';
+      if (activeTab === 'demos') table = 'live_demos';
+
+      let payload = {};
+      
+      if (activeTab === 'services') {
+          payload = { name: formData.title, price: formData.price, description: formData.description, tags: formData.tags }
+      } else if (activeTab === 'projects') {
+          payload = { title: formData.title, description: formData.description, images: formData.images, image_url: formData.images[0]||null, tags: formData.tags }; 
+      } else if (activeTab === 'calendar') {
+          payload = { 
+              title: formData.title, 
+              start_time: new Date(formData.start_time).toISOString(),
+              end_time: new Date(formData.end_time).toISOString(),
+              type: formData.type,
+              description: formData.description 
+          }
+      } else if (activeTab === 'demos') {
+          payload = { title: formData.title, url: formData.url, description: formData.description }
+      }
       
       const q = isEditing ? supabase.from(table).update(payload).eq('id', formData.id) : supabase.from(table).insert([payload]); 
       const { error } = await q; 
       if (!error) { 
-          fetchData(); 
+          if (activeTab === 'calendar') fetchCalendarEvents();
+          else fetchData(); 
           setIsFormOpen(false); 
           setRefreshTrigger(prev => prev + 1) 
       } else { 
@@ -298,6 +423,97 @@ export default function Admin() {
   const nextImage = (e) => { e?.stopPropagation(); setLightboxIndex((prev) => (prev + 1) % lightboxImages.length) }
   const prevImage = (e) => { e?.stopPropagation(); setLightboxIndex((prev) => (prev - 1 + lightboxImages.length) % lightboxImages.length) }
 
+  // --- KALENDÁŘ HELPERY ---
+  const getDaysInMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const getFirstDayOfMonth = (date) => {
+      const day = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+      return day === 0 ? 6 : day - 1; // 0 je neděle, chci 0 = pondělí
+  }
+  
+  const renderCalendar = () => {
+      const daysInMonth = getDaysInMonth(currentDate);
+      const firstDay = getFirstDayOfMonth(currentDate);
+      const days = [];
+      const monthNames = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"];
+
+      // Prázdné buňky
+      for (let i = 0; i < firstDay; i++) {
+          days.push(<div key={`empty-${i}`} className="h-32 bg-[#0f172a]/30 border border-white/5 opacity-50"></div>);
+      }
+
+      // Dny v měsíci
+      for (let d = 1; d <= daysInMonth; d++) {
+          const now = new Date();
+          const isToday = now.getDate() === d && now.getMonth() === currentDate.getMonth() && now.getFullYear() === currentDate.getFullYear();
+          
+          const dayEvents = calendarEvents.filter(e => {
+              const start = new Date(e.start_time);
+              return start.getDate() === d && start.getMonth() === currentDate.getMonth() && start.getFullYear() === currentDate.getFullYear();
+          }).sort((a,b) => new Date(a.start_time) - new Date(b.start_time));
+
+          days.push(
+              <div key={d} 
+                   onClick={() => { 
+                       const clickedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), d);
+                       setSelectedDate(clickedDate); 
+                       openAdd(clickedDate); 
+                    }}
+                   className={`h-32 p-2 border border-white/5 relative group transition-colors hover:bg-white/5 flex flex-col gap-1 overflow-hidden cursor-pointer ${isToday ? 'bg-indigo-500/10 border-indigo-500/50' : 'bg-[#1e293b]/40'}`}>
+                  <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${isToday ? 'bg-indigo-600 text-white' : 'text-slate-400 group-hover:text-white'}`}>{d}</span>
+                  
+                  <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1">
+                    {dayEvents.map(ev => {
+                        let colorClass = 'bg-slate-600';
+                        if (ev.type === 'morning') colorClass = 'bg-amber-500/20 text-amber-300 border-amber-500/30'; 
+                        if (ev.type === 'night') colorClass = 'bg-blue-500/20 text-blue-300 border-blue-500/30'; 
+                        if (ev.type === 'off') colorClass = 'bg-green-500/20 text-green-300 border-green-500/30'; 
+
+                        const timeStr = new Date(ev.start_time).toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'});
+                        
+                        return (
+                            <div key={ev.id} 
+                                 onClick={(e) => { e.stopPropagation(); openEdit(ev); }}
+                                 className={`px-2 py-1 rounded-md text-[10px] font-bold border truncate flex items-center justify-between hover:scale-[1.02] transition ${colorClass}`}>
+                                <span>{ev.title || (ev.type === 'morning' ? 'Ranní' : ev.type === 'night' ? 'Noční' : 'Volno')}</span>
+                                <span className="opacity-70">{timeStr}</span>
+                            </div>
+                        )
+                    })}
+                  </div>
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition"><Plus className="w-4 h-4 text-slate-400 hover:text-white"/></div>
+              </div>
+          );
+      }
+
+      return (
+          <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
+               {/* Ovládání měsíce */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 bg-[#1e293b]/50 p-4 rounded-2xl border border-white/5 backdrop-blur-xl">
+                 <div className="flex w-full sm:w-auto justify-between sm:justify-start items-center gap-4 order-2 sm:order-1">
+                     <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-2 hover:bg-white/10 rounded-xl transition text-slate-400 hover:text-white"><ChevronLeft className="w-6 h-6"/></button>
+                     <h2 className="text-xl font-bold text-white uppercase tracking-widest sm:hidden">{monthNames[currentDate.getMonth()]} <span className="text-indigo-500">{currentDate.getFullYear()}</span></h2>
+                     <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-2 hover:bg-white/10 rounded-xl transition text-slate-400 hover:text-white"><ChevronRight className="w-6 h-6"/></button>
+                 </div>
+                 <h2 className="text-xl font-bold text-white uppercase tracking-widest hidden sm:block order-1 sm:order-2">{monthNames[currentDate.getMonth()]} <span className="text-indigo-500">{currentDate.getFullYear()}</span></h2>
+              </div>
+
+              {/* Grid Dnů */}
+              <div className="overflow-x-auto pb-4 custom-scrollbar">
+                  <div className="min-w-[800px]">
+                      <div className="grid grid-cols-7 gap-px bg-white/5 border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+                          {['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'].map(day => (
+                              <div key={day} className="bg-[#0f172a] p-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">{day}</div>
+                          ))}
+                          {days}
+                      </div>
+                  </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-2 sm:hidden text-center flex items-center justify-center gap-1"><ArrowUp className="w-3 h-3 rotate-90"/> Posouváním do stran zobrazíte celý kalendář</p>
+          </div>
+      )
+  }
+
+  // --- RENDER ---
   return (
     <div className="min-h-screen bg-[#020617] text-white flex font-sans selection:bg-indigo-500 selection:text-white">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -319,6 +535,12 @@ export default function Admin() {
         <nav className="flex-1 space-y-2">
             <button onClick={() => { setActiveTab('projects'); setSearchTerm(''); setIsSidebarOpen(false) }} className={`flex items-center gap-3 w-full p-3.5 rounded-xl font-medium transition-all duration-300 group ${activeTab === 'projects' ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'}`}><FolderKanban className="w-5 h-5" /> <span className="tracking-wide">Projekty</span></button>
             <button onClick={() => { setActiveTab('services'); setSearchTerm(''); setIsSidebarOpen(false) }} className={`flex items-center gap-3 w-full p-3.5 rounded-xl font-medium transition-all duration-300 group ${activeTab === 'services' ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'}`}><ShoppingBag className="w-5 h-5" /> <span className="tracking-wide">Ceník Služeb</span></button>
+            
+            {/* NOVÁ SEKCE PRO LIVE DEMOS */}
+            <button onClick={() => { setActiveTab('demos'); setSearchTerm(''); setIsSidebarOpen(false) }} className={`flex items-center gap-3 w-full p-3.5 rounded-xl font-medium transition-all duration-300 group ${activeTab === 'demos' ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'}`}><MonitorPlay className="w-5 h-5" /> <span className="tracking-wide">Live Demos</span></button>
+
+            <button onClick={() => { setActiveTab('calendar'); setSearchTerm(''); setIsSidebarOpen(false) }} className={`flex items-center gap-3 w-full p-3.5 rounded-xl font-medium transition-all duration-300 group ${activeTab === 'calendar' ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'}`}><CalendarIcon className="w-5 h-5" /> <span className="tracking-wide">Kalendář (Práce)</span></button>
+
             <button onClick={() => { setActiveTab('reviews'); setSearchTerm(''); setIsSidebarOpen(false) }} className={`flex items-center justify-between w-full p-3.5 rounded-xl font-medium transition-all duration-300 group border ${activeTab === 'reviews' ? 'bg-indigo-600/10 text-indigo-400 border-indigo-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white border-transparent'}`}>
                 <div className="flex items-center gap-3"><Star className="w-5 h-5" /> <span className="tracking-wide">Recenze</span></div>
                 {pendingReviewsCount > 0 && (<span className="flex items-center justify-center min-w-[24px] h-6 px-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[10px] font-bold rounded-lg shadow-[0_0_10px_rgba(249,115,22,0.2)]">{pendingReviewsCount}</span>)}
@@ -340,30 +562,32 @@ export default function Admin() {
         <button onClick={handleLogout} className="flex items-center gap-3 text-slate-400 hover:text-red-400 mt-auto p-4 hover:bg-red-500/5 rounded-xl transition group border border-transparent hover:border-red-500/10"><LogOut className="w-5 h-5 group-hover:-translate-x-1 transition" /> <span className="font-medium">Odhlásit se</span></button>
       </aside>
 
-      <main className="flex-1 md:ml-72 p-6 md:p-12 relative z-10 transition-all duration-300">
-        <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-12 gap-6 bg-[#020617]/50 backdrop-blur-sm sticky top-0 z-30 py-4 -mx-6 px-6 md:-mx-12 md:px-12 border-b border-white/5">
+      <main className="flex-1 md:ml-72 p-4 md:p-12 relative z-10 transition-all duration-300">
+        <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 md:mb-12 gap-6 bg-[#020617]/50 backdrop-blur-sm sticky top-0 z-30 py-4 -mx-4 px-4 md:-mx-12 md:px-12 border-b border-white/5">
             <div className="flex-1 w-full xl:w-auto">
                 <div className="flex items-center gap-4 mb-4 xl:mb-2">
                     <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 bg-white/5 rounded-lg text-slate-300 hover:text-white md:hidden"><Menu className="w-6 h-6" /></button>
-                    <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+                    <h2 className="text-xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
                         <div className="p-2 bg-white/5 rounded-xl border border-white/10 shadow-inner hidden sm:block">
                             {activeTab === 'messages' && getFolderIcon(folders.find(f => f.id === activeFolderId)?.icon)}
                             {activeTab === 'services' && <ShoppingBag className="w-6 h-6 text-indigo-500"/>}
                             {activeTab === 'projects' && <FolderKanban className="w-6 h-6 text-indigo-500"/>}
                             {activeTab === 'reviews' && <Star className="w-6 h-6 text-indigo-500"/>}
+                            {activeTab === 'calendar' && <CalendarIcon className="w-6 h-6 text-indigo-500"/>}
+                            {activeTab === 'demos' && <MonitorPlay className="w-6 h-6 text-indigo-500"/>}
                         </div>
-                        <span>
-                            {activeTab === 'messages' ? (folders.find(f => f.id === activeFolderId)?.name || 'Zprávy') : activeTab === 'services' ? 'Ceník Služeb' : activeTab === 'reviews' ? 'Recenze' : 'Portfolio Projektů'}
+                        <span className="truncate">
+                            {activeTab === 'messages' ? (folders.find(f => f.id === activeFolderId)?.name || 'Zprávy') : activeTab === 'services' ? 'Ceník Služeb' : activeTab === 'reviews' ? 'Recenze' : activeTab === 'calendar' ? 'Pracovní Kalendář' : activeTab === 'demos' ? 'Live Demos' : 'Portfolio Projektů'}
                         </span>
                     </h2>
                 </div>
                 <div className="flex flex-wrap items-center gap-4 text-slate-400 text-xs font-medium uppercase tracking-wide ml-1">
                     <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/5">
-                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${statusColor} transition-colors duration-500`}>{currentFolderUnread > 0 && <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>}</span>
-                        <span>{activeTab === 'messages' ? (currentFolderUnread > 0 ? `${currentFolderUnread} Nepřečtených` : 'Vše přečteno') : `${totalItems} záznamů`}</span>
+                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${activeTab === 'calendar' ? 'bg-blue-500 shadow-[0_0_10px_blue]' : statusColor} transition-colors duration-500`}>{currentFolderUnread > 0 && <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>}</span>
+                        <span>{activeTab === 'messages' ? (currentFolderUnread > 0 ? `${currentFolderUnread} Nepřečtených` : 'Vše přečteno') : activeTab === 'calendar' ? `${calendarEvents.length} událostí` : `${totalItems} záznamů`}</span>
                     </div>
                     {activeTab === 'messages' && (
-                        <div className="flex items-center bg-[#1e293b] p-1 rounded-lg border border-white/10 w-full sm:w-auto overflow-x-auto mt-2 sm:mt-0">
+                        <div className="flex items-center bg-[#1e293b] p-1 rounded-lg border border-white/10 w-full sm:w-auto overflow-x-auto mt-2 sm:mt-0 custom-scrollbar">
                             <button onClick={() => setFilterStatus('all')} className={`px-3 py-1 rounded-md transition-all text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${filterStatus === 'all' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>Vše</button>
                             <button onClick={() => setFilterStatus('unread')} className={`px-3 py-1 rounded-md transition-all text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${filterStatus === 'unread' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>Nepřečtené</button>
                             <button onClick={() => setFilterStatus('read')} className={`px-3 py-1 rounded-md transition-all text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${filterStatus === 'read' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>Přečtené</button>
@@ -372,20 +596,25 @@ export default function Admin() {
                 </div>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
-                <div className="relative group flex-1 xl:w-64">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-slate-500 group-focus-within:text-indigo-400 transition" /></div>
-                    <input type="text" placeholder="Hledat..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-[#1e293b]/50 border border-white/10 text-white text-sm rounded-xl focus:ring-2 focus:ring-indigo-500/50 block w-full pl-10 p-3.5 outline-none transition-all placeholder:text-slate-600 focus:border-indigo-500/50 focus:bg-[#1e293b]"/>
-                </div>
+                {activeTab !== 'calendar' && (
+                  <div className="relative group flex-1 xl:w-64">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-slate-500 group-focus-within:text-indigo-400 transition" /></div>
+                      <input type="text" placeholder="Hledat..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-[#1e293b]/50 border border-white/10 text-white text-sm rounded-xl focus:ring-2 focus:ring-indigo-500/50 block w-full pl-10 p-3.5 outline-none transition-all placeholder:text-slate-600 focus:border-indigo-500/50 focus:bg-[#1e293b]"/>
+                  </div>
+                )}
                 <div className="flex gap-3">
                     {activeTab === 'messages' ? (
                         <>
                             <button onClick={() => setRefreshTrigger(p => p + 1)} className="p-3.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl border border-white/10 transition group"><RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : 'group-hover:rotate-180 transition duration-500'}`}/></button>
-                            {currentFolderUnread > 0 && (<button onClick={markAllAsRead} className="px-4 py-3.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 border border-indigo-500/20 rounded-xl transition flex items-center gap-2 font-bold text-sm whitespace-nowrap"><CheckCheck className="w-4 h-4"/> <span className="hidden sm:inline">Přečíst vše</span></button>)}
+                            {currentFolderUnread > 0 && (<button onClick={markAllAsRead} className="px-4 py-3.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 border border-indigo-500/20 rounded-xl transition flex items-center gap-2 font-bold text-sm whitespace-nowrap justify-center"><CheckCheck className="w-4 h-4"/> <span className="hidden sm:inline">Přečíst vše</span></button>)}
                         </>
-                    ) : activeTab === 'reviews' ? (
-                        <button onClick={() => setRefreshTrigger(p => p + 1)} className="p-3.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl border border-white/10 transition group flex-1 sm:flex-none justify-center"><RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : 'group-hover:rotate-180 transition duration-500'}`}/></button>
+                    ) : activeTab === 'reviews' || activeTab === 'calendar' ? (
+                        <>
+                          <button onClick={() => setRefreshTrigger(p => p + 1)} className="p-3.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl border border-white/10 transition group flex-1 sm:flex-none justify-center"><RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : 'group-hover:rotate-180 transition duration-500'}`}/></button>
+                          {activeTab === 'calendar' && <button onClick={() => { setSelectedDate(new Date()); openAdd(new Date()); }} className="px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(79,70,229,0.3)] flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 ring-1 ring-white/20 flex-1 sm:flex-none whitespace-nowrap"><Plus className="w-5 h-5" /> <span className="hidden sm:inline">Přidat směnu</span><span className="sm:hidden">Směna</span></button>}
+                        </>
                     ) : (
-                        <button onClick={openAdd} className="px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(79,70,229,0.3)] flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 ring-1 ring-white/20 flex-1 sm:flex-none"><Plus className="w-5 h-5" /> <span className="hidden sm:inline">Vytvořit</span></button>
+                        <button onClick={() => openAdd()} className="px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(79,70,229,0.3)] flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 ring-1 ring-white/20 flex-1 sm:flex-none"><Plus className="w-5 h-5" /> <span className="hidden sm:inline">Vytvořit</span><span className="sm:hidden">Nový</span></button>
                     )}
                 </div>
             </div>
@@ -393,8 +622,10 @@ export default function Admin() {
 
         {loading ? (
             <div className="h-64 flex flex-col items-center justify-center gap-4 text-slate-500"><Loader2 className="animate-spin w-10 h-10 text-indigo-500"/><p className="text-sm uppercase tracking-widest animate-pulse">Synchronizuji data...</p></div>
-        ) : items.length === 0 ? (
+        ) : items.length === 0 && activeTab !== 'calendar' ? (
             <div className="h-96 flex flex-col items-center justify-center gap-6 border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.02]"><div className="p-4 bg-white/5 rounded-full"><Search className="w-12 h-12 opacity-30 text-slate-400"/></div><div className="text-center"><p className="text-slate-400 font-medium text-lg">Tady je prázdno.</p><p className="text-slate-600 text-sm mt-1">Žádné položky odpovídající filtru.</p></div></div>
+        ) : activeTab === 'calendar' ? (
+            renderCalendar()
         ) : activeTab === 'reviews' ? (
             <div className="grid grid-cols-1 gap-4 animate-in fade-in duration-500 slide-in-from-bottom-4">
                 {items.map(review => (
@@ -468,9 +699,8 @@ export default function Admin() {
                 ))}
             </div>
         ) : activeTab === 'services' ? (
-            // --- NOVÁ TABULKA PRO SLUŽBY ---
-            <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#1e293b]/40 backdrop-blur-xl animate-in fade-in duration-500 slide-in-from-bottom-4">
-                <table className="w-full text-left text-sm text-slate-400">
+            <div className="overflow-x-auto rounded-2xl border border-white/5 bg-[#1e293b]/40 backdrop-blur-xl animate-in fade-in duration-500 slide-in-from-bottom-4 custom-scrollbar pb-2">
+                <table className="w-full text-left text-sm text-slate-400 min-w-[700px]">
                     <thead className="bg-white/5 text-xs uppercase font-bold text-slate-300">
                         <tr>
                             <th className="px-6 py-4 tracking-wider">Název služby</th>
@@ -523,6 +753,28 @@ export default function Admin() {
                     </tbody>
                 </table>
             </div>
+        ) : activeTab === 'demos' ? (
+            // --- GRID PRO LIVE DEMOS ---
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
+                {items.map(item => (
+                    <div key={item.id} className="group relative bg-[#1e293b]/40 backdrop-blur-xl border border-white/5 hover:border-indigo-500/30 rounded-2xl p-5 transition-all duration-300 flex flex-col gap-4 overflow-hidden">
+                        <div className="flex-1 flex flex-col">
+                            <div className="flex items-start justify-between mb-2">
+                                <h3 className="font-bold text-lg text-white">{item.title}</h3>
+                                <div className="p-2 bg-indigo-500/10 rounded-full text-indigo-400"><MonitorPlay className="w-5 h-5"/></div>
+                            </div>
+                            <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline truncate mb-3 flex items-center gap-1">
+                                {item.url} <ExternalLink className="w-3 h-3"/>
+                            </a>
+                            <p className="text-sm text-slate-400 line-clamp-3 mb-4 flex-1">{item.description}</p>
+                            <div className="flex gap-2 border-t border-white/5 pt-4 mt-auto">
+                                <button onClick={() => openEdit(item)} className="flex-1 py-2 bg-white/5 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-lg text-xs font-bold uppercase tracking-wider">Upravit</button>
+                                <button onClick={() => confirmDel(item)} className="px-3 py-2 bg-white/5 hover:bg-red-600 hover:text-white text-slate-400 rounded-lg"><Trash2 className="w-4 h-4"/></button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
         ) : (
             // --- GRID PROJEKTŮ ---
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
@@ -533,42 +785,63 @@ export default function Admin() {
             </div>
         )}
 
-        <div className="flex flex-col md:flex-row justify-between items-center mt-8 pt-6 border-t border-white/5 gap-4">
-            <p className="text-sm text-slate-500 text-center md:text-left">
-                Zobrazeno {items.length} z {totalItems} záznamů
-            </p>
-            <div className="flex gap-2">
-                <button onClick={prevPage} disabled={currentPage === 1} className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl text-sm font-bold flex items-center gap-2 transition">
-                    <ChevronLeft className="w-4 h-4"/> 
-                    <span className="hidden sm:inline">Předchozí</span>
-                </button>
-                
-                <span className="px-4 py-2 text-slate-400 text-sm font-mono flex items-center bg-[#1e293b] rounded-xl border border-white/5">{currentPage} / {totalPages || 1}</span>
-                
-                <button onClick={nextPage} disabled={currentPage >= totalPages} className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl text-sm font-bold flex items-center gap-2 transition">
-                    <span className="hidden sm:inline">Další</span>
-                    <ChevronRight className="w-4 h-4"/>
-                </button>
+        {activeTab !== 'calendar' && items.length > 0 && (
+            <div className="flex flex-col md:flex-row justify-between items-center mt-8 pt-6 border-t border-white/5 gap-4">
+                <p className="text-sm text-slate-500 text-center md:text-left">
+                    Zobrazeno {items.length} z {totalItems} záznamů
+                </p>
+                <div className="flex gap-2">
+                    <button onClick={prevPage} disabled={currentPage === 1} className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl text-sm font-bold flex items-center gap-2 transition">
+                        <ChevronLeft className="w-4 h-4"/> 
+                        <span className="hidden sm:inline">Předchozí</span>
+                    </button>
+                    
+                    <span className="px-4 py-2 text-slate-400 text-sm font-mono flex items-center bg-[#1e293b] rounded-xl border border-white/5">{currentPage} / {totalPages || 1}</span>
+                    
+                    <button onClick={nextPage} disabled={currentPage >= totalPages} className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl text-sm font-bold flex items-center gap-2 transition">
+                        <span className="hidden sm:inline">Další</span>
+                        <ChevronRight className="w-4 h-4"/>
+                    </button>
+                </div>
             </div>
-        </div>
+        )}
       </main>
 
-      {/* --- MODALS (FORM) --- */}
+      {/* --- MODALS (FORM) - Responsivní wrapper --- */}
       {isFormOpen && activeTab !== 'messages' && activeTab !== 'reviews' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity" onClick={() => setIsFormOpen(false)}></div>
-            <div className="bg-[#0f172a] border border-white/10 rounded-3xl w-full max-w-3xl relative z-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 ring-1 ring-white/10">
+            <div className="bg-[#0f172a] border border-white/10 rounded-none md:rounded-3xl w-full md:max-w-3xl h-full md:h-auto md:max-h-[90vh] relative z-10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 ring-1 ring-white/10">
                 <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#162032]">
                     <h3 className="text-xl font-bold flex items-center gap-3 text-white"><div className={`p-2.5 rounded-xl ${isEditing ? 'bg-indigo-500/20 text-indigo-400' : 'bg-green-500/20 text-green-400'}`}>{isEditing ? <Pencil className="w-5 h-5"/> : <Plus className="w-5 h-5"/>}</div>{isEditing ? 'Upravit záznam' : 'Nový záznam'}</h3>
                     <button onClick={() => setIsFormOpen(false)} className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition"><X className="w-6 h-6"/></button>
                 </div>
-                <div className="p-8 overflow-y-auto custom-scrollbar">
+                <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1">
                     <form id="dataForm" onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2 md:col-span-2">
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Název</label>
-                            <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition text-lg font-medium placeholder:text-slate-600"/>
+                            <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition text-lg font-medium placeholder:text-slate-600" placeholder={activeTab === 'calendar' ? 'Např. Ranní směna' : 'Název...'}/>
                         </div>
-                        {activeTab === 'services' ? (
+                        {activeTab === 'calendar' ? (
+                             <>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1 flex items-center gap-2"><ClockIcon className="w-3 h-3"/> Začátek</label>
+                                    <input type="datetime-local" required value={formData.start_time} onChange={e => setFormData({...formData, start_time: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition [color-scheme:dark]"/>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1 flex items-center gap-2"><ClockIcon className="w-3 h-3"/> Konec</label>
+                                    <input type="datetime-local" required value={formData.end_time} onChange={e => setFormData({...formData, end_time: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition [color-scheme:dark]"/>
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Typ směny</label>
+                                    <div className="flex gap-4">
+                                        <button type="button" onClick={() => setFormData({...formData, type: 'morning', title: 'Ranní'})} className={`flex-1 p-3 rounded-xl border ${formData.type === 'morning' ? 'bg-amber-500/20 border-amber-500 text-amber-300' : 'bg-[#1e293b] border-white/10 text-slate-400'}`}>☀️ Ranní</button>
+                                        <button type="button" onClick={() => setFormData({...formData, type: 'night', title: 'Noční'})} className={`flex-1 p-3 rounded-xl border ${formData.type === 'night' ? 'bg-blue-500/20 border-blue-500 text-blue-300' : 'bg-[#1e293b] border-white/10 text-slate-400'}`}>🌙 Noční</button>
+                                        <button type="button" onClick={() => setFormData({...formData, type: 'off', title: 'Volno'})} className={`flex-1 p-3 rounded-xl border ${formData.type === 'off' ? 'bg-green-500/20 border-green-500 text-green-300' : 'bg-[#1e293b] border-white/10 text-slate-400'}`}>🌴 Volno</button>
+                                    </div>
+                                </div>
+                             </>
+                        ) : activeTab === 'services' ? (
                             <>
                                 <div className="space-y-2 md:col-span-2">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Cena (Kč)</label>
@@ -582,6 +855,12 @@ export default function Admin() {
                                     </div>
                                 </div>
                             </>
+                        ) : activeTab === 'demos' ? (
+                            // --- FORMULÁŘ PRO LIVE DEMOS (URL místo obrázků) ---
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">URL Adresa</label>
+                                <input type="text" required value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition text-lg font-medium placeholder:text-slate-600" placeholder="https://moje-demo.cz"/>
+                            </div>
                         ) : (
                             <>
                                 <div className="space-y-2 md:col-span-2">
@@ -605,14 +884,17 @@ export default function Admin() {
                             </>
                         )}
                         <div className="md:col-span-2 space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Popis</label>
-                            <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white h-40 resize-none leading-relaxed placeholder:text-slate-600"/>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Popis / Poznámka</label>
+                            <textarea required={activeTab !== 'calendar'} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white h-40 resize-none leading-relaxed placeholder:text-slate-600"/>
                         </div>
                     </form>
                 </div>
-                <div className="p-6 border-t border-white/10 bg-[#162032] flex justify-end gap-3">
+                <div className="p-6 border-t border-white/10 bg-[#162032] flex justify-end gap-3 shrink-0">
                     <button onClick={() => setIsFormOpen(false)} className="px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl font-bold transition">Zrušit</button>
-                    <button form="dataForm" disabled={isSubmitting || isUploading} className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50 transform hover:scale-[1.02] active:scale-[0.98]">{isSubmitting ? <Loader2 className="animate-spin w-5 h-5"/> : <Save className="w-5 h-5"/>}{isEditing ? 'Uložit změny' : 'Vytvořit záznam'}</button>
+                    {isEditing && activeTab === 'calendar' && (
+                        <button onClick={() => { confirmDel(formData); setIsFormOpen(false); }} className="px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-bold transition mr-auto border border-red-500/20">Smazat</button>
+                    )}
+                    <button form="dataForm" disabled={isSubmitting || isUploading} className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50 transform hover:scale-[1.02] active:scale-[0.98]">{isSubmitting ? <Loader2 className="animate-spin w-5 h-5"/> : <Save className="w-5 h-5"/>}{isEditing ? 'Uložit' : 'Vytvořit'}</button>
                 </div>
             </div>
         </div>
