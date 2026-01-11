@@ -2,127 +2,13 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="Showcase od FireFOXX Dev.">
     <title>FireFOXX Dev | Fixed Edition</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        :root {
-            --hue: 225; 
-            --primary: hsl(var(--hue), 90%, 60%);
-            --secondary: hsl(calc(var(--hue) + 40), 90%, 60%);
-            --bg-dark: #050507;
-            --text-light: #ffffff;
-            --glass-bg: rgba(20, 25, 40, 0.75); 
-            --glass-border: rgba(255, 255, 255, 0.08);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
-
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-light);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* POZADÍ */
-        .background-blob {
-            position: absolute; border-radius: 50%; filter: blur(60px); z-index: -1; opacity: 0.3;
-            transform: translate3d(0,0,0); will-change: transform;
-            animation: float 14s infinite alternate ease-in-out;
-        }
-        .blob-1 { top: -10%; left: -10%; width: 55vw; height: 55vw; background: var(--primary); }
-        .blob-2 { bottom: -10%; right: -10%; width: 45vw; height: 45vw; background: var(--secondary); animation-delay: -5s; }
-        @keyframes float { 0% { transform: translate3d(0,0,0); } 100% { transform: translate3d(20px, 40px, 0); } }
-
-        /* WIDGETY */
-        .top-bar { position: fixed; top: 30px; width: 90%; max-width: 1200px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 100; pointer-events: none; }
-        .top-bar > * { pointer-events: all; }
-
-        .clock-widget { background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); padding: 8px 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; min-width: 130px; }
-        .time { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 700; color: #fff; text-shadow: 0 0 10px var(--primary); }
-        .date { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; margin-top: 3px; }
-
-        .controls-right { display: flex; gap: 10px; align-items: center; }
-        .lang-switch { background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); padding: 8px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: 0.3s; color: rgba(255,255,255,0.7); }
-        .lang-switch:hover { color: #fff; border-color: var(--primary); }
-        .theme-control { background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); padding: 10px 15px; border-radius: 50px; display: flex; align-items: center; }
-        input[type="range"] { -webkit-appearance: none; width: 60px; height: 4px; background: linear-gradient(to right, #4facfe, #00f2fe); border-radius: 10px; cursor: pointer; }
-        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #fff; border-radius: 50%; cursor: pointer; }
-
-        /* HLAVNÍ KARTA */
-        .glass-card {
-            width: 90%; max-width: 420px; background: var(--glass-bg); backdrop-filter: blur(15px);
-            border: 1px solid var(--glass-border); border-radius: 24px; padding: 40px 30px; 
-            text-align: center; position: relative; transform-style: preserve-3d; transform: perspective(1000px); 
-            transition: 0.2s; box-shadow: 0 20px 50px rgba(0,0,0,0.5); margin-bottom: 40px;
-        }
-        .glass-card.hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
-        .content-layer { transform: translateZ(20px); }
-
-        /* AVATAR */
-        .avatar-container { position: relative; width: 100px; height: 100px; margin: 0 auto 15px; }
-        .avatar {
-            width: 100%; height: 100%; border-radius: 50%;
-            background-image: url('https://ouch-cdn2.icons8.com/ddd65E_wM1r9aA-zXJqXJvHHOlZqFvQ7A5t3j8kJ1MA/rs:fit:368:368/czM6Ly9pY29uczgu/b3VjaC1wcm9kLmFz/c2V0cy9wbmcvMTQv/ZjU2MzZGmMtYmIz/MC00M2Q0LTk4N2Et/MzY4MmFlN2Q2ZjIz/LnBuZw.png');
-            background-size: cover; background-position: center; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3));
-        }
-        .play-btn {
-            position: absolute; bottom: 0; right: 0; width: 35px; height: 35px;
-            background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            color: white; font-size: 0.8rem; cursor: pointer; border: 3px solid rgba(20, 25, 40, 1);
-            animation: pulse 2s infinite; transition: 0.3s;
-        }
-        .play-btn:hover { transform: scale(1.1); }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(79, 172, 254, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(79, 172, 254, 0); } 100% { box-shadow: 0 0 0 0 rgba(79, 172, 254, 0); } }
-
-        h1 { font-size: 2rem; margin-bottom: 5px; font-weight: 700; color: #fff; }
-        .role-wrapper { height: 1.5em; margin-bottom: 20px; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--primary); }
-        
-        .services-container { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 25px; }
-        .service-tag { font-size: 0.75rem; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 6px; color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.05); }
-
-        .cta-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px; }
-        .btn-row { display: flex; gap: 10px; }
-        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); border: none; padding: 12px; color: white; font-size: 0.95rem; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; width: 100%; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-        .btn-secondary { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px; color: white; font-size: 0.95rem; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-primary:hover, .btn-secondary:hover { transform: translateY(-2px); filter: brightness(1.2); }
-
-        .review-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; text-align: left; margin-bottom: 25px; border-left: 3px solid var(--primary); }
-        .review-text { font-size: 0.8rem; font-style: italic; color: rgba(255,255,255,0.7); margin-bottom: 5px; }
-        .review-author { font-size: 0.75rem; font-weight: 600; color: #fff; }
-
-        .social-links { display: flex; justify-content: center; gap: 20px; }
-        .social-link { color: rgba(255,255,255,0.5); font-size: 1.2rem; transition: 0.3s; cursor: pointer; }
-        .social-link:hover { color: white; transform: translateY(-3px); }
-
-        .footer { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; text-align: center; font-size: 0.8rem; color: rgba(255, 255, 255, 0.3); background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px); border-top: 1px solid rgba(255, 255, 255, 0.05); z-index: 50; }
-        .footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
-
-        /* MODALY */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 8, 0.95); z-index: 200; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: 0.2s; }
-        .modal-overlay.active { opacity: 1; pointer-events: all; }
-        .modal-card { width: 90%; max-width: 400px; background: #121216; border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 30px; position: relative; text-align: left; transform: scale(0.95); transition: 0.2s; }
-        .modal-overlay.active .modal-card { transform: scale(1); }
-        .close-btn { position: absolute; top: 20px; right: 20px; color: rgba(255,255,255,0.5); cursor: pointer; z-index: 10; font-size: 1.2rem; }
-        .form-input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; outline: none; margin-bottom: 10px; font-family: 'Outfit', sans-serif; }
-        
-        .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
-        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-
-        .toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%) translateY(100px); background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid var(--primary); color: white; padding: 12px 25px; border-radius: 50px; font-size: 0.9rem; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 1000; opacity: 0; }
-        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        .toast i { color: var(--primary); }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -215,160 +101,16 @@
     </div>
 
     <div class="modal-overlay" id="videoModal">
-        <div class="modal-card" style="max-width: 600px;">
+        <div class="modal-card video-modal-card">
             <i class="fas fa-times close-btn" onclick="closeAllModals()"></i>
             <h2 id="videoTitle" style="color:white; margin-bottom:15px;">Video Vizitka</h2>
             <div class="video-container">
-                <iframe id="youtubeFrame" width="560" height="315" src="" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                <iframe id="youtubeFrame" src="" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
             </div>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
-    <script>
-        // --- GLOBÁLNÍ PROMĚNNÉ (MUSÍ BÝT NAHOŘE) ---
-        let isEnglish = false;
-        const videoURL = "https://www.youtube.com/embed/LXb3EKWsInQ?autoplay=1";
-        const hueSlider = document.getElementById('hueSlider');
-        const root = document.documentElement;
-
-        // DOM ELEMENTS
-        const mainCard = document.getElementById('mainCard');
-        const contactModal = document.getElementById('contactModal');
-        const qrModal = document.getElementById('qrModal');
-        const videoModal = document.getElementById('videoModal');
-        const videoFrame = document.getElementById('youtubeFrame');
-
-        // --- HODINY (FUNKCE) ---
-        function updateClock() {
-            const now = new Date();
-            const locale = isEnglish ? 'en-US' : 'cs-CZ';
-            
-            // Čas vč. sekund
-            const timeOpts = { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit',
-                hour12: isEnglish // EN = 12h, CS = 24h
-            };
-            
-            // Datum
-            const dateOpts = isEnglish 
-                ? { weekday: 'short', month: 'short', day: 'numeric' } 
-                : { weekday: 'short', day: 'numeric', month: 'numeric' };
-
-            document.getElementById('clock').textContent = now.toLocaleTimeString(locale, timeOpts);
-            document.getElementById('dateDisplay').textContent = now.toLocaleDateString(locale, dateOpts);
-        }
-
-        // --- START HODIN ---
-        setInterval(updateClock, 1000);
-        updateClock(); // Spustit hned
-
-        // --- OVLÁDÁNÍ OKEN ---
-        function openVideo() {
-            videoFrame.src = videoURL;
-            videoModal.classList.add('active');
-            mainCard.classList.add('hidden');
-        }
-
-        function openContact() { contactModal.classList.add('active'); mainCard.classList.add('hidden'); }
-        function openQR() { qrModal.classList.add('active'); mainCard.classList.add('hidden'); }
-        
-        function closeAllModals() { 
-            contactModal.classList.remove('active'); 
-            qrModal.classList.remove('active'); 
-            videoModal.classList.remove('active');
-            mainCard.classList.remove('hidden');
-            videoFrame.src = ""; // Stop videa
-        }
-
-        // --- TOASTY ---
-        function showToast(message) {
-            const toastEl = document.getElementById('toast');
-            document.getElementById('toastMsg').textContent = message;
-            toastEl.classList.add('show');
-            setTimeout(() => { toastEl.classList.remove('show'); }, 3000);
-        }
-
-        function submitForm(e) {
-            e.preventDefault();
-            const msg = isEnglish ? "Message sent!" : "Zpráva odeslána!";
-            showToast(msg);
-            closeAllModals();
-        }
-
-        function copyToClipboard(type) {
-            let msg = "";
-            if (isEnglish) {
-                msg = type === 'email' ? 'Email copied!' : 'Link copied!';
-            } else {
-                msg = type === 'email' ? 'Email zkopírován!' : 'Odkaz zkopírován!';
-            }
-            showToast(msg);
-        }
-
-        function downloadVCard() {
-            const vcardData = `BEGIN:VCARD\nVERSION:3.0\nFN:David Kovář\nEMAIL:david@email.cz\nEND:VCARD`;
-            const blob = new Blob([vcardData], { type: "text/vcard" });
-            const url = URL.createObjectURL(blob);
-            const newLink = document.createElement('a');
-            newLink.download = "kontakt.vcf";
-            newLink.href = url;
-            newLink.click();
-            
-            const msg = isEnglish ? "Contact saved!" : "Kontakt stažen!";
-            showToast(msg);
-        }
-
-        // --- BARVY ---
-        hueSlider.addEventListener('input', (e) => root.style.setProperty('--hue', e.target.value));
-
-        // --- TYPEWRITER ---
-        const roles = ["Marketing Specialist", "PPC Expert", "Growth Hacker"];
-        let count = 0, index = 0, currentText = "", letter = "";
-        (function type() {
-            if (count === roles.length) count = 0;
-            currentText = roles[count];
-            letter = currentText.slice(0, ++index);
-            const target = document.getElementById('typewriter');
-            if(target) target.textContent = letter;
-            
-            if (letter.length === currentText.length) { count++; index = 0; setTimeout(type, 2000); } 
-            else { setTimeout(type, 100); }
-        }());
-
-        // --- JAZYK ---
-        function toggleLanguage() {
-            isEnglish = !isEnglish;
-            const langBtn = document.getElementById('langBtn');
-            
-            if (isEnglish) {
-                langBtn.textContent = "CZ";
-                document.getElementById('btnContact').textContent = "Send Message";
-                document.getElementById('btnSave').textContent = "Save";
-                document.getElementById('reviewText').textContent = "\"Thanks to the new strategy, revenue doubled. Great job.\"";
-                document.getElementById('videoTitle').textContent = "Video Bio";
-                document.getElementById('contactTitle').textContent = "Contact Me";
-                document.getElementById('qrTitle').textContent = "Scan & Save";
-                document.getElementById('sendBtn').textContent = "Send Message";
-                showToast('Language: English');
-            } else {
-                langBtn.textContent = "EN";
-                document.getElementById('btnContact').textContent = "Napsat Zprávu";
-                document.getElementById('btnSave').textContent = "Uložit";
-                document.getElementById('reviewText').textContent = "\"Díky nové strategii se nám ozývá 2x více klientů. Profesionální přístup.\"";
-                document.getElementById('videoTitle').textContent = "Video Vizitka";
-                document.getElementById('contactTitle').textContent = "Kontakt";
-                document.getElementById('qrTitle').textContent = "Scan & Save";
-                document.getElementById('sendBtn').textContent = "Odeslat / Send";
-                showToast('Jazyk: Čeština');
-            }
-            updateClock(); // Ihned aktualizovat formát data
-        }
-
-        // --- TILT ---
-        VanillaTilt.init(document.querySelector(".glass-card"), { max: 5, speed: 400, glare: true, "max-glare": 0.2, gyroscope: false });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
