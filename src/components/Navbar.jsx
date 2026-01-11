@@ -94,15 +94,14 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
                     className="relative px-4 py-2 ml-1 text-sm font-bold text-indigo-500 hover:opacity-80 transition-colors flex items-center gap-2 rounded-full"
                 >
                     <MonitorPlay className="w-4 h-4" />
-                    <span>Demos</span>
+                    <span>Live Demos</span>
                 </button>
             )}
           </div>
 
-          {/* PRAVÁ ČÁST (Theme Toggle + Auth) */}
+          {/* PRAVÁ ČÁST */}
           <div className="flex items-center gap-2">
             
-            {/* MODERN THEME TOGGLE */}
             <button 
               onClick={toggleTheme}
               className={`p-2.5 rounded-full transition-all duration-300 border ${isDarkMode ? 'bg-white/5 border-white/10 text-yellow-400 hover:bg-yellow-400/10' : 'bg-slate-100 border-slate-200 text-indigo-600 hover:bg-indigo-50'}`}
@@ -120,8 +119,9 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
               </AnimatePresence>
             </button>
 
+            {/* UPRAVENO: "Napsat mi" místo Kontakt */}
             <button onClick={() => scrollToSection('kontakt')} className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-full text-sm transition group shadow-lg shadow-blue-600/20">
-              <span>Kontakt</span>
+              <span>Napsat mi</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
             </button>
 
@@ -150,14 +150,27 @@ export default function Navbar({ isDarkMode, toggleTheme }) {
               initial={{ opacity: 0, scale: 0.95, y: -20 }}
               animate={{ opacity: 1, scale: 1, y: 10 }}
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              className={`absolute top-full left-0 w-full border rounded-3xl p-6 md:hidden flex flex-col gap-4 shadow-2xl overflow-hidden ${isDarkMode ? 'bg-[#1e293b]/90 border-white/10 text-white' : 'bg-white/95 border-slate-200 text-slate-900'} backdrop-blur-xl`}
+              className={`absolute top-full left-0 w-full border rounded-3xl p-6 md:hidden flex flex-col gap-2 shadow-2xl overflow-hidden ${isDarkMode ? 'bg-[#1e293b]/90 border-white/10 text-white' : 'bg-white/95 border-slate-200 text-slate-900'} backdrop-blur-xl`}
             >
               {links.map((link) => (
                  <button key={link.name} onClick={() => scrollToSection(link.id)} className={`flex items-center justify-between p-4 rounded-xl transition font-medium w-full text-left ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
                     {link.name}
                  </button>
               ))}
-              <div className="h-px bg-slate-500/10 my-1"></div>
+
+              {/* PŘIDÁNO: Live Demos v mobilním menu */}
+              {hasDemos && (
+                <button 
+                  onClick={() => scrollToSection('livedemos')} 
+                  className={`flex items-center gap-3 p-4 rounded-xl transition font-bold text-indigo-500 w-full text-left ${isDarkMode ? 'hover:bg-indigo-500/10' : 'hover:bg-indigo-50'}`}
+                >
+                  <MonitorPlay className="w-5 h-5" />
+                  <span>Live Demos</span>
+                </button>
+              )}
+
+              <div className="h-px bg-slate-500/10 my-2"></div>
+              
               <button 
                 onClick={() => scrollToSection('kontakt')} 
                 className="flex items-center justify-center gap-2 w-full py-4 bg-blue-600 text-white font-bold rounded-2xl transition shadow-xl"
