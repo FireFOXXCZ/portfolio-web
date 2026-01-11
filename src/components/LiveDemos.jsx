@@ -3,7 +3,7 @@ import { supabase } from '../supabase'
 import { MonitorPlay, ExternalLink, Loader2, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-export default function LiveDemos() {
+export default function LiveDemos({ isDarkMode }) {
   const [demos, setDemos] = useState([])
   const [loading, setLoading] = useState(true)
   
@@ -30,32 +30,27 @@ export default function LiveDemos() {
   const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE
   const currentDemos = demos.slice(indexOfFirstItem, indexOfLastItem)
   
-  // Spočítáme celkový počet stránek (minimálně 1)
+  // Spočítáme celkový počet stránek
   const totalPages = Math.max(1, Math.ceil(demos.length / ITEMS_PER_PAGE))
 
-  const nextPage = () => {
-      if (currentPage < totalPages) setCurrentPage(prev => prev + 1)
-  }
+  const nextPage = () => { if (currentPage < totalPages) setCurrentPage(prev => prev + 1) }
+  const prevPage = () => { if (currentPage > 1) setCurrentPage(prev => prev - 1) }
 
-  const prevPage = () => {
-      if (currentPage > 1) setCurrentPage(prev => prev - 1)
-  }
-
-  // Pokud nejsou v databázi vůbec žádná data, sekci schováme (aby nebyla prázdná plocha)
   if (!loading && demos.length === 0) return null
 
   return (
-    <section id="livedemos" className="py-20 relative overflow-hidden">
+    <section id="livedemos" className="py-20 relative overflow-hidden transition-colors duration-500">
+      {/* Pozadí záře */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl pointer-events-none">
-          <div className="absolute top-[20%] right-[10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] opacity-30"></div>
+          <div className={`absolute top-[20%] right-[10%] w-[500px] h-[500px] rounded-full blur-[100px] transition-opacity duration-500 ${isDarkMode ? 'bg-indigo-600/10 opacity-30' : 'bg-indigo-400/5 opacity-20'}`}></div>
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
+          <h2 className={`text-3xl md:text-4xl font-bold mb-4 tracking-tight transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
             Live <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-500">Demos</span>
           </h2>
-          <p className="text-slate-400 max-w-2xl mx-auto">
+          <p className={`max-w-2xl mx-auto transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
             Ukázky živých projektů a aplikací, které si můžete ihned vyzkoušet.
           </p>
         </div>
@@ -78,24 +73,32 @@ export default function LiveDemos() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
-                            className="group relative bg-[#1e293b]/40 backdrop-blur-md border border-white/5 hover:border-indigo-500/30 rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 flex flex-col h-full"
+                            className={`group relative border backdrop-blur-md rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 flex flex-col h-full ${
+                                isDarkMode 
+                                ? 'bg-[#1e293b]/40 border-white/5 hover:border-indigo-500/30 shadow-2xl shadow-black/20' 
+                                : 'bg-white border-slate-200 shadow-xl shadow-slate-200/50 hover:border-indigo-300'
+                            }`}
                         >
                             <div className="flex items-start justify-between mb-4">
-                                <div className="p-3 bg-indigo-500/10 rounded-xl text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition duration-300">
+                                <div className={`p-3 rounded-xl transition duration-300 ${
+                                    isDarkMode 
+                                    ? 'bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white' 
+                                    : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'
+                                }`}>
                                     <MonitorPlay className="w-6 h-6" />
                                 </div>
                                 <a 
                                     href={finalUrl} 
                                     target="_blank" 
                                     rel="noopener noreferrer" 
-                                    className="p-2 text-slate-500 hover:text-white transition"
+                                    className={`p-2 transition ${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-indigo-600'}`}
                                 >
                                     <ExternalLink className="w-5 h-5" />
                                 </a>
                             </div>
 
-                            <h3 className="text-xl font-bold text-white mb-2">{demo.title}</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed mb-6 flex-1">
+                            <h3 className={`text-xl font-bold mb-2 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{demo.title}</h3>
+                            <p className={`text-sm leading-relaxed mb-6 flex-1 transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                                 {demo.description}
                             </p>
 
@@ -103,7 +106,11 @@ export default function LiveDemos() {
                                 href={finalUrl} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="mt-auto flex items-center justify-center gap-2 w-full py-3 bg-white/5 hover:bg-indigo-600 text-white rounded-xl font-medium transition-all"
+                                className={`mt-auto flex items-center justify-center gap-2 w-full py-3 rounded-xl font-medium transition-all ${
+                                    isDarkMode 
+                                    ? 'bg-white/5 hover:bg-indigo-600 text-white' 
+                                    : 'bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700'
+                                }`}
                             >
                                 Spustit Demo <ArrowRight className="w-4 h-4" />
                             </a>
@@ -112,26 +119,36 @@ export default function LiveDemos() {
                 })}
             </div>
 
-            {/* OVLÁDÁNÍ STRÁNKOVÁNÍ - Teď je tady VŽDYCKY, i pro 1 stránku */}
+            {/* OVLÁDÁNÍ STRÁNKOVÁNÍ */}
             <div className="flex justify-center items-center gap-4 mt-12">
                 <button 
                     onClick={prevPage} 
                     disabled={currentPage === 1}
-                    className="p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-white disabled:opacity-20 disabled:cursor-not-allowed transition"
+                    className={`p-3 rounded-full border transition-all disabled:opacity-20 disabled:cursor-not-allowed ${
+                        isDarkMode 
+                        ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' 
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-md'
+                    }`}
                 >
                     <ChevronLeft className="w-5 h-5" />
                 </button>
                 
-                <div className="bg-[#1e293b] px-4 py-2 rounded-xl border border-white/10 shadow-inner">
-                    <span className="text-sm font-mono text-indigo-400 font-bold">
-                        {currentPage} <span className="text-slate-600 mx-1">/</span> {totalPages}
+                <div className={`px-4 py-2 rounded-xl border shadow-inner transition-colors ${
+                    isDarkMode ? 'bg-[#1e293b] border-white/10' : 'bg-slate-100 border-slate-200'
+                }`}>
+                    <span className={`text-sm font-mono font-bold transition-colors ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                        {currentPage} <span className={isDarkMode ? 'text-slate-600' : 'text-slate-400'}>/</span> {totalPages}
                     </span>
                 </div>
 
                 <button 
                     onClick={nextPage} 
                     disabled={currentPage === totalPages}
-                    className="p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-white disabled:opacity-20 disabled:cursor-not-allowed transition"
+                    className={`p-3 rounded-full border transition-all disabled:opacity-20 disabled:cursor-not-allowed ${
+                        isDarkMode 
+                        ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' 
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-md'
+                    }`}
                 >
                     <ChevronRight className="w-5 h-5" />
                 </button>

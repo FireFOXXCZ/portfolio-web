@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { ExternalLink, X, ChevronLeft, ChevronRight, Maximize2, Layers, ZoomIn, ZoomOut } from 'lucide-react'
 
-export default function Portfolio() {
+export default function Portfolio({ isDarkMode }) {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -11,7 +11,7 @@ export default function Portfolio() {
   const [lightboxImages, setLightboxImages] = useState([])
   const [lightboxIndex, setLightboxIndex] = useState(0)
   
-  // NOVÉ: Stav pro zoom
+  // Stav pro zoom
   const [isZoomed, setIsZoomed] = useState(false)
 
   // --- NASTAVENÍ STRÁNKOVÁNÍ ---
@@ -39,7 +39,7 @@ export default function Portfolio() {
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .order('created_at', { ascending: true }) // Od nejstaršího
+        .order('created_at', { ascending: true })
       
       if (error) throw error
       setProjects(data)
@@ -50,23 +50,20 @@ export default function Portfolio() {
     }
   }
 
-  // --- LOGIKA STRÁNKOVÁNÍ ---
   const indexOfLastItem = currentPage * ITEMS_PER_PAGE
   const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE
   const currentProjects = projects.slice(indexOfFirstItem, indexOfLastItem)
-  
   const totalPages = Math.ceil(projects.length / ITEMS_PER_PAGE) || 1
 
   const nextPage = () => { if (currentPage < totalPages) setCurrentPage(prev => prev + 1) }
   const prevPage = () => { if (currentPage > 1) setCurrentPage(prev => prev - 1) }
 
-  // --- LIGHTBOX LOGIKA ---
   const openLightbox = (images, index = 0) => {
     if (!images || images.length === 0) return
     setLightboxImages(images)
     setLightboxIndex(index)
     setLightboxOpen(true)
-    setIsZoomed(false) // Reset zoomu při otevření
+    setIsZoomed(false)
   }
 
   const closeLightbox = () => {
@@ -77,13 +74,13 @@ export default function Portfolio() {
   const nextImage = (e) => {
     e?.stopPropagation()
     setLightboxIndex((prev) => (prev + 1) % lightboxImages.length)
-    setIsZoomed(false) // Reset zoomu při změně obrázku
+    setIsZoomed(false)
   }
 
   const prevImage = (e) => {
     e?.stopPropagation()
     setLightboxIndex((prev) => (prev - 1 + lightboxImages.length) % lightboxImages.length)
-    setIsZoomed(false) // Reset zoomu při změně obrázku
+    setIsZoomed(false)
   }
 
   const toggleZoom = (e) => {
@@ -92,8 +89,8 @@ export default function Portfolio() {
   }
 
   return (
-    <section id="portfolio" className="py-20 px-6 max-w-6xl mx-auto border-t border-white/5 relative">
-      <h2 className="text-3xl md:text-4xl font-bold mb-12">Vybrané projekty</h2>
+    <section id="portfolio" className={`py-20 px-6 max-w-6xl mx-auto border-t transition-colors duration-500 relative ${isDarkMode ? 'border-white/5' : 'border-slate-200'}`}>
+      <h2 className={`text-3xl md:text-4xl font-bold mb-12 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Vybrané projekty</h2>
       
       {loading ? (
         <p className="text-slate-500">Načítám projekty...</p>
@@ -110,24 +107,33 @@ export default function Portfolio() {
                 const thumb = gallery.length > 0 ? gallery[0] : "https://placehold.co/800x600/1e293b/FFF?text=No+Image"
 
                 return (
-                <div key={project.id} className="rounded-2xl overflow-hidden border border-white/10 group bg-[#1e293b]/30 hover:border-blue-500/30 transition duration-500 flex flex-col h-full">
+                <div key={project.id} className={`rounded-2xl overflow-hidden border transition-all duration-500 flex flex-col h-full ${
+                    isDarkMode 
+                    ? 'bg-[#1e293b]/30 border-white/10 hover:border-blue-500/30 shadow-2xl' 
+                    : 'bg-white border-slate-200 shadow-xl shadow-slate-200/50 hover:border-blue-300'
+                }`}>
                     
-                    {/* OBRÁZEK (Klikatelný) */}
+                    {/* OBRÁZEK */}
                     <div 
                         className="h-64 bg-slate-800 relative overflow-hidden cursor-pointer group/img"
                         onClick={() => openLightbox(gallery)}
                     >
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent opacity-60 z-10 transition group-hover/img:opacity-40"></div>
+                        {/* Gradient překryv se mění podle tématu */}
+                        <div className={`absolute inset-0 z-10 transition group-hover/img:opacity-40 ${
+                            isDarkMode 
+                            ? 'bg-gradient-to-t from-[#0f172a] via-transparent to-transparent opacity-60' 
+                            : 'bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-30'
+                        }`}></div>
                         
                         <img 
-                        src={thumb} 
-                        alt={project.title} 
-                        className="w-full h-full object-cover transition duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100" 
+                            src={thumb} 
+                            alt={project.title} 
+                            className="w-full h-full object-cover transition duration-700 group-hover:scale-110" 
                         />
 
                         {/* Ikonka zvětšení */}
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition duration-300 z-20">
-                            <div className="bg-black/50 p-3 rounded-full backdrop-blur-sm border border-white/10">
+                            <div className="bg-black/50 p-3 rounded-full backdrop-blur-sm border border-white/10 shadow-xl">
                                 <Maximize2 className="w-6 h-6 text-white" />
                             </div>
                         </div>
@@ -143,21 +149,27 @@ export default function Portfolio() {
 
                     {/* Texty */}
                     <div className="p-8 relative z-20 flex-1 flex flex-col">
-                        <h3 className="text-2xl font-bold mb-3 text-white group-hover:text-blue-400 transition">{project.title}</h3>
-                        <p className="text-slate-400 text-sm mb-6 leading-relaxed line-clamp-3 flex-1">
-                        {project.description}
+                        <h3 className={`text-2xl font-bold mb-3 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'} group-hover:text-blue-500`}>
+                            {project.title}
+                        </h3>
+                        <p className={`text-sm mb-6 leading-relaxed line-clamp-3 flex-1 transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                            {project.description}
                         </p>
                         
                         <div className="flex flex-wrap gap-2 mb-6 mt-auto">
                         {project.tags && project.tags.map((tag, index) => (
-                            <span key={index} className="px-3 py-1 text-[10px] uppercase font-bold tracking-wider rounded-full bg-blue-500/5 text-blue-400 border border-blue-500/10">
-                            {tag}
+                            <span key={index} className={`px-3 py-1 text-[10px] uppercase font-bold tracking-wider rounded-full transition-colors border ${
+                                isDarkMode 
+                                ? 'bg-blue-500/5 text-blue-400 border-blue-500/10' 
+                                : 'bg-blue-50 text-blue-600 border-blue-100'
+                            }`}>
+                                {tag}
                             </span>
                         ))}
                         </div>
 
                         {project.link && (
-                        <a href={project.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-bold text-white hover:text-blue-400 transition">
+                        <a href={project.link} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-2 text-sm font-bold transition-all hover:translate-x-1 ${isDarkMode ? 'text-white hover:text-blue-400' : 'text-blue-600 hover:text-blue-700'}`}>
                             Zobrazit web <ExternalLink className="w-4 h-4" />
                         </a>
                         )}
@@ -168,75 +180,73 @@ export default function Portfolio() {
             </div>
 
             {/* STRÁNKOVÁNÍ */}
-            <div className="flex justify-center items-center gap-4 mt-12 pt-8 border-t border-white/5">
-                <button onClick={prevPage} disabled={currentPage === 1} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white">
+            <div className={`flex justify-center items-center gap-4 mt-12 pt-8 border-t transition-colors ${isDarkMode ? 'border-white/5' : 'border-slate-200'}`}>
+                <button 
+                    onClick={prevPage} 
+                    disabled={currentPage === 1} 
+                    className={`p-2 rounded-lg transition-all disabled:opacity-30 ${
+                        isDarkMode 
+                        ? 'bg-white/5 hover:bg-white/10 text-white' 
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-900 shadow-sm'
+                    }`}
+                >
                     <ChevronLeft className="w-6 h-6" />
                 </button>
-                <span className="text-slate-400 font-mono text-sm">Strana <span className="text-white font-bold">{currentPage}</span> z {totalPages}</span>
-                <button onClick={nextPage} disabled={currentPage === totalPages} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition text-white">
+                <span className={`font-mono text-sm transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Strana <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{currentPage}</span> z {totalPages}
+                </span>
+                <button 
+                    onClick={nextPage} 
+                    disabled={currentPage === totalPages} 
+                    className={`p-2 rounded-lg transition-all disabled:opacity-30 ${
+                        isDarkMode 
+                        ? 'bg-white/5 hover:bg-white/10 text-white' 
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-900 shadow-sm'
+                    }`}
+                >
                     <ChevronRight className="w-6 h-6" />
                 </button>
             </div>
         </>
       )}
 
-      {/* --- LIGHTBOX (S Zoomem) --- */}
+      {/* --- LIGHTBOX (Zůstává vždy tmavý, aby vynikly fotky) --- */}
       {lightboxOpen && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-200" onClick={closeLightbox}>
-              
-              {/* OVLÁDACÍ PRVKY NAHOŘE */}
               <div className="absolute top-6 right-6 z-50 flex items-center gap-4">
-                  {/* Tlačítko ZOOM */}
-                  <button 
-                    onClick={toggleZoom} 
-                    className="text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition"
-                    title={isZoomed ? "Oddálit" : "Přiblížit"}
-                  >
+                  <button onClick={toggleZoom} className="text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition">
                       {isZoomed ? <ZoomOut className="w-8 h-8"/> : <ZoomIn className="w-8 h-8"/>}
                   </button>
-
-                  {/* Tlačítko ZAVŘÍT */}
-                  <button 
-                    onClick={closeLightbox} 
-                    className="text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition"
-                  >
+                  <button onClick={closeLightbox} className="text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition">
                       <X className="w-10 h-10"/>
                   </button>
               </div>
 
               <div className="relative w-full h-full flex items-center justify-center p-4 sm:p-10 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                  
-                  {/* Šipky (skryjí se, když je přiblíženo, aby nezavazely) */}
                   {!isZoomed && lightboxImages.length > 1 && (
-                      <button onClick={prevImage} className="absolute left-4 sm:left-10 p-3 bg-black/50 hover:bg-blue-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 group border border-white/10">
-                          <ChevronLeft className="w-8 h-8 group-hover:-translate-x-0.5 transition"/>
+                      <button onClick={prevImage} className="absolute left-4 sm:left-10 p-3 bg-black/50 hover:bg-blue-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 border border-white/10">
+                          <ChevronLeft className="w-8 h-8"/>
                       </button>
                   )}
 
-                  {/* HLAVNÍ OBRÁZEK S LOGIKOU ZOOMU */}
                   <div 
                     className={`transition-transform duration-300 ease-out flex items-center justify-center ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
                     onClick={toggleZoom}
                     style={{ 
-                        transform: isZoomed ? 'scale(1.8)' : 'scale(1)', // Zoom faktor 1.8x
+                        transform: isZoomed ? 'scale(1.8)' : 'scale(1)',
                         maxWidth: '100%',
                         maxHeight: '100%'
                     }}
                   >
-                      <img 
-                        src={lightboxImages[lightboxIndex]} 
-                        className="max-w-full max-h-[90vh] object-contain rounded-md shadow-2xl" 
-                        alt="Gallery" 
-                      />
+                      <img src={lightboxImages[lightboxIndex]} className="max-w-full max-h-[90vh] object-contain rounded-md shadow-2xl" alt="Gallery" />
                   </div>
 
                   {!isZoomed && lightboxImages.length > 1 && (
-                      <button onClick={nextImage} className="absolute right-4 sm:right-10 p-3 bg-black/50 hover:bg-blue-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 group border border-white/10">
-                          <ChevronRight className="w-8 h-8 group-hover:translate-x-0.5 transition"/>
+                      <button onClick={nextImage} className="absolute right-4 sm:right-10 p-3 bg-black/50 hover:bg-blue-600 text-white rounded-full backdrop-blur-sm transition-all hover:scale-110 z-40 border border-white/10">
+                          <ChevronRight className="w-8 h-8"/>
                       </button>
                   )}
 
-                  {/* Počítadlo (skryté při zoomu) */}
                   {!isZoomed && (
                       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 px-4 py-2 rounded-full text-white text-sm font-medium backdrop-blur-sm border border-white/10">
                           {lightboxIndex + 1} / {lightboxImages.length}

@@ -7,11 +7,13 @@ import { Loader2, CheckCircle2, X, ChevronLeft, ChevronRight } from 'lucide-reac
 import Sidebar from '../components/admin/Sidebar'
 import Header from '../components/admin/Header'
 import Calendar from '../components/admin/Calendar'
+import Settings from '../components/admin/Settings'
 import { MessagesList, DemosList, ServicesTable, ProjectsGrid, ReviewsList } from '../components/admin/Content'
 import { FormModal, DeleteModal, FolderModal, Lightbox } from '../components/admin/Modals'
 
 export default function Admin() {
   const navigate = useNavigate()
+  const [user, setUser] = useState(null)
   const [activeTab, setActiveTab] = useState('projects') 
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -28,7 +30,6 @@ export default function Admin() {
   const [folders, setFolders] = useState([])
   const [activeFolderId, setActiveFolderId] = useState(null)
   
-  // SLOŽKY STAVY
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [newFolderIcon, setNewFolderIcon] = useState('folder')
@@ -74,7 +75,6 @@ export default function Admin() {
     navigate('/login')
   }
 
-  // --- ZPĚT PŘIDANÁ FUNKCE PRO KOPÍROVÁNÍ ---
   const copyToClipboard = (text) => { 
     navigator.clipboard.writeText(text); 
     showToast(`Zkopírováno: ${text}`) 
@@ -82,13 +82,19 @@ export default function Admin() {
 
   useEffect(() => {
     if (window.$crisp) { window.$crisp.push(['do', 'chat:hide']); }
+    
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { navigate('/login'); return }
+      if (!user) {
+        navigate('/login')
+        return
+      }
+      setUser(user)
       await fetchFolders()
       await fetchUnreadCounts()
     }
     init()
+
     const channel = supabase.channel('admin-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => { fetchUnreadCounts(); if(activeTab === 'messages') setRefreshTrigger(p => p+1) })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => { fetchUnreadCounts(); if(activeTab === 'reviews') setRefreshTrigger(p => p+1) })
@@ -96,10 +102,11 @@ export default function Admin() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'live_demos' }, () => { if(activeTab === 'demos') setRefreshTrigger(p => p+1) })
       .subscribe()
     return () => { supabase.removeChannel(channel); if (window.$crisp) { window.$crisp.push(['do', 'chat:show']); } }
-  }, [activeTab])
+  }, [activeTab, navigate])
 
   useEffect(() => {
     if (activeTab === 'calendar') fetchCalendarEvents();
+    else if (activeTab === 'settings') { setLoading(false); }
     else fetchData();
     fetchUnreadCounts();
   }, [activeTab, activeFolderId, refreshTrigger, filterStatus, currentPage, searchTerm, currentDate])
@@ -153,7 +160,10 @@ export default function Admin() {
 
   async function fetchFolders() {
       const { data } = await supabase.from('folders').select('*').order('position', { ascending: true });
-      if (data) { setFolders(data); if (!activeFolderId) setActiveFolderId(data[0].id); }
+      if (data && data.length > 0) { 
+        setFolders(data); 
+        if (!activeFolderId) setActiveFolderId(data[0].id); 
+      }
   }
 
   async function markAllAsRead() {
@@ -295,7 +305,7 @@ export default function Admin() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white flex font-sans">
+    <div className="min-h-screen bg-[#020617] text-white flex font-sans overflow-hidden">
       <Sidebar 
         isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} activeTab={activeTab} setActiveTab={setActiveTab} 
         folders={folders} activeFolderId={activeFolderId} setActiveFolderId={setActiveFolderId}
@@ -313,12 +323,13 @@ export default function Admin() {
             }
         }}
       />
-      <main className="flex-1 md:ml-72 p-4 md:p-12 relative z-10">
+      <main className="flex-1 md:ml-72 p-4 md:p-12 relative z-10 overflow-y-auto h-screen">
         <Header 
           setIsSidebarOpen={setIsSidebarOpen} activeTab={activeTab} folders={folders} activeFolderId={activeFolderId}
           searchTerm={searchTerm} setSearchTerm={setSearchTerm} currentFolderUnread={unreadCounts[activeFolderId] || 0}
           totalItems={totalItems} calendarCount={calendarEvents.length} filterStatus={filterStatus} setFilterStatus={setFilterStatus} 
           setRefreshTrigger={setRefreshTrigger} markAllAsRead={markAllAsRead} openAdd={openAdd} loading={loading}
+          userEmail={user?.email} 
         />
         {loading ? (
           <div className="h-64 flex flex-col items-center justify-center gap-4 text-slate-500"><Loader2 className="animate-spin w-10 h-10 text-indigo-500"/></div>
@@ -330,6 +341,7 @@ export default function Admin() {
             {activeTab === 'demos' && <DemosList items={items} openEdit={openEdit} confirmDel={(i) => { setItemToDelete(i); setIsDeleteOpen(true); }} />}
             {activeTab === 'reviews' && <ReviewsList items={items} toggleReviewStatus={toggleReviewStatus} confirmDel={(i) => { setItemToDelete(i); setIsDeleteOpen(true); }} />}
             {activeTab === 'calendar' && <Calendar currentDate={currentDate} setCurrentDate={setCurrentDate} calendarEvents={calendarEvents} openAdd={openAdd} openEdit={openEdit} />}
+            {activeTab === 'settings' && <Settings />}
           </>
         )}
       </main>

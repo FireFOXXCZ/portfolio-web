@@ -1,4 +1,4 @@
-import { LogOut, FolderKanban, ShoppingBag, MonitorPlay, Calendar as CalendarIcon, Star, FolderPlus, Home, X, Inbox, Archive, Clock, CheckSquare, Tag, Mail, Bell, Folder, Trash2, GripVertical, Pencil } from 'lucide-react'
+import { LogOut, FolderKanban, ShoppingBag, MonitorPlay, Calendar as CalendarIcon, Star, FolderPlus, Home, X, Inbox, Archive, Clock, CheckSquare, Tag, Mail, Bell, Folder, Trash2, GripVertical, Pencil, Settings } from 'lucide-react' // Přidáno Settings
 import { useState } from 'react'
 
 export default function Sidebar({ 
@@ -91,7 +91,14 @@ export default function Sidebar({
                   </div>
               ))}
             </div>
+
             <div className="h-px bg-white/5 my-8"></div>
+
+            {/* NOVÁ SEKCE NASTAVENÍ */}
+            <button onClick={() => { setActiveTab('settings'); setIsOpen(false) }} className={`flex items-center gap-3 w-full p-3.5 rounded-xl font-medium transition-all group ${activeTab === 'settings' ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+                <Settings className="w-5 h-5" /> Nastavení
+            </button>
+
             <a href="/" className="flex items-center gap-3 w-full p-3.5 rounded-xl font-medium text-slate-400 hover:text-white transition group border border-transparent"><Home className="w-5 h-5 group-hover:text-green-400 transition-colors" /> Zpět na web</a>
         </nav>
         <button onClick={onLogout} className="flex items-center gap-3 text-slate-400 hover:text-red-400 mt-auto p-4 hover:bg-red-500/5 rounded-xl transition group border border-transparent hover:border-red-500/10"><LogOut className="w-5 h-5 group-hover:-translate-x-1 transition" /> <span className="font-medium">Odhlásit se</span></button>
