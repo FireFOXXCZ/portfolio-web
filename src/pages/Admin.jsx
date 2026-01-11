@@ -79,7 +79,6 @@ export default function Admin() {
     const channel = supabase
       .channel('global-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
-          console.log('🔔 REALTIME UPDATE (Messages):', payload)
           fetchUnreadCounts()
           if (activeTab === 'messages') setRefreshTrigger(prev => prev + 1)
           if (payload.eventType === 'INSERT') showToast('Nová zpráva!')
@@ -127,7 +126,6 @@ export default function Admin() {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
     
-    // Načteme události pro aktuální měsíc (plus minus pár dní pro přetečení)
     const { data, error } = await supabase
         .from('calendar_events')
         .select('*')
@@ -403,7 +401,22 @@ export default function Admin() {
               description: formData.description 
           }
       } else if (activeTab === 'demos') {
-          payload = { title: formData.title, url: formData.url, description: formData.description }
+          // --- AUTO-FIX URL PRO LIVE DEMOS ---
+          let cleanUrl = formData.url.trim();
+          
+          // Pokud uživatel zadal cestu s index.html/php, automaticky ji vyčistíme
+          if (cleanUrl.endsWith('index.html')) {
+              cleanUrl = cleanUrl.replace('index.html', '');
+          } else if (cleanUrl.endsWith('index.php')) {
+              cleanUrl = cleanUrl.replace('index.php', '');
+          }
+
+          // Pokud to není soubor a chybí lomítko na konci, přidáme ho (pro hezčí URL)
+          if (!cleanUrl.endsWith('/') && !cleanUrl.endsWith('.html') && !cleanUrl.endsWith('.php')) {
+              cleanUrl += '/';
+          }
+          
+          payload = { title: formData.title, url: cleanUrl, description: formData.description }
       }
       
       const q = isEditing ? supabase.from(table).update(payload).eq('id', formData.id) : supabase.from(table).insert([payload]); 
@@ -856,10 +869,18 @@ export default function Admin() {
                                 </div>
                             </>
                         ) : activeTab === 'demos' ? (
-                            // --- FORMULÁŘ PRO LIVE DEMOS (URL místo obrázků) ---
+                            // --- FORMULÁŘ PRO LIVE DEMOS (URL jako TEXT input) ---
                             <div className="space-y-2 md:col-span-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">URL Adresa</label>
-                                <input type="text" required value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition text-lg font-medium placeholder:text-slate-600" placeholder="https://moje-demo.cz"/>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={formData.url} 
+                                    onChange={e => setFormData({...formData, url: e.target.value})} 
+                                    className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-white transition text-lg font-medium placeholder:text-slate-600" 
+                                    placeholder="/demos/muj-projekt/ nebo https://..."
+                                />
+                                <p className="text-[10px] text-slate-500 pl-1">Systém automaticky skryje <code>index.html</code></p>
                             </div>
                         ) : (
                             <>
