@@ -9,6 +9,7 @@ import Reviews from '../components/Reviews'
 import GlobalAvailability from '../components/GlobalAvailability' 
 import LiveDemos from '../components/LiveDemos'
 
+
 // Přidány props: lang, toggleLang, t
 function Home({ lang, toggleLang, t }) {
   const [isDarkMode, setIsDarkMode] = useState(true);

@@ -63,10 +63,7 @@ export default function LiveDemos({ isDarkMode, t, lang }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
                 {currentDemos.map((demo, index) => {
                     let finalUrl = demo.url;
-                    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                    if (isLocalhost && finalUrl.endsWith('/') && !finalUrl.includes('index.html')) {
-                        finalUrl += 'index.html';
-                    }
+                    
 
                     /* --- LOGIKA PŘEPÍNÁNÍ JAZYKA --- */
                     const displayTitle = lang === 'en' ? (demo.title_en || demo.title) : demo.title;

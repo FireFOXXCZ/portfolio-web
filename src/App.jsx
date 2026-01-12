@@ -5,6 +5,7 @@ import Home from './pages/Home'
 import Admin from './pages/Admin'
 import Login from './pages/Login'
 import Privacy from './pages/Privacy'
+import ProductLanding from './pages/demos/product_web/ProductLanding';
 
 function App() {
   // Inicializace jazyka z localStorage nebo 'cz'
@@ -35,6 +36,7 @@ function App() {
         <Route path="/admin" element={<Admin />} />
         <Route path="/login" element={<Login />} />
         <Route path="/privacy" element={<Privacy lang={lang} toggleLang={toggleLang} t={t} />} />
+       <Route path="/demos/product_web/" element={<ProductLanding />} />
       </Routes>
     </Router>
   )
