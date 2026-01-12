@@ -4,7 +4,7 @@ import { Send, CheckCircle2, Loader2, Mail, MapPin, Briefcase, AlertCircle, X } 
 import { useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 
-export default function Contact({ isDarkMode, t, lang }) { // PŘIDÁNY PROPS t a lang
+export default function Contact({ isDarkMode, t, lang }) {
   const [formData, setFormData] = useState({ name: '', email: '', message: '', serviceId: '' })
   const [services, setServices] = useState([])
   const [status, setStatus] = useState('idle')
@@ -21,7 +21,8 @@ export default function Contact({ isDarkMode, t, lang }) { // PŘIDÁNY PROPS t 
 
   useEffect(() => {
     async function fetchServices() {
-        const { data } = await supabase.from('products').select('id, name')
+        // UPRAVENO: Přidáno 'name_en' do výběru sloupců
+        const { data } = await supabase.from('products').select('id, name, name_en')
         if (data) {
             setServices(data)
             const params = new URLSearchParams(location.search)
@@ -50,11 +51,11 @@ export default function Contact({ isDarkMode, t, lang }) { // PŘIDÁNY PROPS t 
     const { error } = await supabase.from('messages').insert([messageData])
 
     if (error) {
-      showToast(t.toast_error, 'error') // POUŽITÍ PŘEKLADU
+      showToast(t.toast_error, 'error')
       setStatus('error')
     } else {
       setStatus('success')
-      showToast(t.toast_success, 'success') // POUŽITÍ PŘEKLADU
+      showToast(t.toast_success, 'success')
       setFormData({ name: '', email: '', message: '', serviceId: '' })
       setTimeout(() => setStatus('idle'), 3000)
     }
@@ -113,7 +114,8 @@ export default function Contact({ isDarkMode, t, lang }) { // PŘIDÁNY PROPS t 
                     <option value="">{t.option_default}</option>
                     {services.map(service => (
                         <option key={service.id} value={service.id}>
-                            {service.name}
+                            {/* UPRAVENO: Dynamický výběr jazyka pro název služby */}
+                            {lang === 'en' ? (service.name_en || service.name) : service.name}
                         </option>
                     ))}
                   </select>

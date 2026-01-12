@@ -49,7 +49,7 @@ function Home({ lang, toggleLang, t }) {
         <Portfolio isDarkMode={isDarkMode} t={t.projects} lang={lang} />
         <LiveDemos isDarkMode={isDarkMode} t={t.demos} lang={lang} />
         <Reviews isDarkMode={isDarkMode} t={t.reviews} />
-        <Contact isDarkMode={isDarkMode} t={t.contact} />
+        <Contact isDarkMode={isDarkMode} t={t.contact} lang={lang} />
         <Footer isDarkMode={isDarkMode} t={t.footer} />
       </div>
 
