@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { ExternalLink, X, ChevronLeft, ChevronRight, Maximize2, Layers, ZoomIn, ZoomOut } from 'lucide-react'
 
-export default function Portfolio({ isDarkMode }) {
+// PŘIJÍMÁ PROP: lang (pro bilingvní zobrazení)
+export default function Portfolio({ isDarkMode, t, lang }) {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -90,10 +91,12 @@ export default function Portfolio({ isDarkMode }) {
 
   return (
     <section id="portfolio" className={`py-20 px-6 max-w-6xl mx-auto border-t transition-colors duration-500 relative ${isDarkMode ? 'border-white/5' : 'border-slate-200'}`}>
-      <h2 className={`text-3xl md:text-4xl font-bold mb-12 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Vybrané projekty</h2>
+      <h2 className={`text-3xl md:text-4xl font-bold mb-12 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+        {t?.title || 'Vybrané projekty'}
+      </h2>
       
       {loading ? (
-        <p className="text-slate-500">Načítám projekty...</p>
+        <p className="text-slate-500">{t?.loading || 'Načítám projekty...'}</p>
       ) : (
         <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 min-h-[400px]">
@@ -105,6 +108,11 @@ export default function Portfolio({ isDarkMode }) {
                     gallery = [project.image_url]
                 }
                 const thumb = gallery.length > 0 ? gallery[0] : "https://placehold.co/800x600/1e293b/FFF?text=No+Image"
+
+                /* --- LOGIKA PŘEPÍNÁNÍ JAZYKA --- */
+                const displayTitle = lang === 'en' ? (project.title_en || project.title) : project.title;
+                const displayDesc = lang === 'en' ? (project.description_en || project.description) : project.description;
+                const displayTags = lang === 'en' ? (project.tags_en && project.tags_en.length > 0 ? project.tags_en : project.tags) : project.tags;
 
                 return (
                 <div key={project.id} className={`rounded-2xl overflow-hidden border transition-all duration-500 flex flex-col h-full ${
@@ -118,7 +126,6 @@ export default function Portfolio({ isDarkMode }) {
                         className="h-64 bg-slate-800 relative overflow-hidden cursor-pointer group/img"
                         onClick={() => openLightbox(gallery)}
                     >
-                        {/* Gradient překryv se mění podle tématu */}
                         <div className={`absolute inset-0 z-10 transition group-hover/img:opacity-40 ${
                             isDarkMode 
                             ? 'bg-gradient-to-t from-[#0f172a] via-transparent to-transparent opacity-60' 
@@ -127,37 +134,35 @@ export default function Portfolio({ isDarkMode }) {
                         
                         <img 
                             src={thumb} 
-                            alt={project.title} 
+                            alt={displayTitle} 
                             className="w-full h-full object-cover transition duration-700 group-hover:scale-110" 
                         />
 
-                        {/* Ikonka zvětšení */}
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition duration-300 z-20">
                             <div className="bg-black/50 p-3 rounded-full backdrop-blur-sm border border-white/10 shadow-xl">
                                 <Maximize2 className="w-6 h-6 text-white" />
                             </div>
                         </div>
 
-                        {/* BADGE: Počet fotek */}
                         {gallery.length > 1 && (
                             <div className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 px-3 py-1.5 bg-black/60 backdrop-blur-md border border-white/10 rounded-full text-xs font-bold text-white shadow-lg">
                                 <Layers className="w-3 h-3 text-blue-400" />
-                                +{gallery.length - 1} další
+                                +{gallery.length - 1} {lang === 'en' ? 'more' : 'další'}
                             </div>
                         )}
                     </div>
 
-                    {/* Texty */}
+                    {/* Texty (Dynamické dle jazyka) */}
                     <div className="p-8 relative z-20 flex-1 flex flex-col">
                         <h3 className={`text-2xl font-bold mb-3 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'} group-hover:text-blue-500`}>
-                            {project.title}
+                            {displayTitle}
                         </h3>
                         <p className={`text-sm mb-6 leading-relaxed line-clamp-3 flex-1 transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                            {project.description}
+                            {displayDesc}
                         </p>
                         
                         <div className="flex flex-wrap gap-2 mb-6 mt-auto">
-                        {project.tags && project.tags.map((tag, index) => (
+                        {displayTags && displayTags.map((tag, index) => (
                             <span key={index} className={`px-3 py-1 text-[10px] uppercase font-bold tracking-wider rounded-full transition-colors border ${
                                 isDarkMode 
                                 ? 'bg-blue-500/5 text-blue-400 border-blue-500/10' 
@@ -170,7 +175,7 @@ export default function Portfolio({ isDarkMode }) {
 
                         {project.link && (
                         <a href={project.link} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-2 text-sm font-bold transition-all hover:translate-x-1 ${isDarkMode ? 'text-white hover:text-blue-400' : 'text-blue-600 hover:text-blue-700'}`}>
-                            Zobrazit web <ExternalLink className="w-4 h-4" />
+                            {t?.view_project || 'Zobrazit web'} <ExternalLink className="w-4 h-4" />
                         </a>
                         )}
                     </div>
@@ -193,7 +198,7 @@ export default function Portfolio({ isDarkMode }) {
                     <ChevronLeft className="w-6 h-6" />
                 </button>
                 <span className={`font-mono text-sm transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Strana <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{currentPage}</span> z {totalPages}
+                    {lang === 'en' ? 'Page' : 'Strana'} <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{currentPage}</span> / {totalPages}
                 </span>
                 <button 
                     onClick={nextPage} 
@@ -210,7 +215,7 @@ export default function Portfolio({ isDarkMode }) {
         </>
       )}
 
-      {/* --- LIGHTBOX (Zůstává vždy tmavý, aby vynikly fotky) --- */}
+      {/* --- LIGHTBOX --- */}
       {lightboxOpen && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-200" onClick={closeLightbox}>
               <div className="absolute top-6 right-6 z-50 flex items-center gap-4">

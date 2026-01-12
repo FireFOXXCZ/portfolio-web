@@ -3,13 +3,16 @@ import { supabase } from '../supabase'
 import { ChevronLeft, ChevronRight, Sparkles, Code2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
-export default function Services({ isDarkMode }) {
+// PŘIJÍMÁ PROPS: t (překlady), lang (aktuální jazyk)
+export default function Services({ isDarkMode, t, lang }) {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   
   const navigate = useNavigate()
 
-  // --- NASTAVENÍ STRÁNKOVÁNÍ ---
+  // --- KURZ EURA (upraveno na 24) ---
+  const EXCHANGE_RATE = 24; 
+
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 3 
 
@@ -50,13 +53,16 @@ export default function Services({ isDarkMode }) {
              ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
              : 'bg-blue-50 text-blue-600 border-blue-200'
            }`}>
-              <Sparkles className="w-3 h-3"/> Ceník & Balíčky
+              <Sparkles className="w-3 h-3"/> {t?.title || 'Ceník & Balíčky'}
            </div>
            <h2 className={`text-4xl md:text-5xl font-bold mb-6 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-             Investice do vaší <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-600">budoucnosti</span>
+             {lang === 'en' ? 'Invest in your ' : 'Investice do vaší '} 
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-600">
+                {lang === 'en' ? 'future' : 'budoucnosti'}
+             </span>
            </h2>
            <p className={`max-w-2xl mx-auto text-lg leading-relaxed transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-             Transparentní ceny. Žádné skryté poplatky. Vyberte si řešení, které vás posune dál.
+             {t?.subtitle || 'Transparentní ceny. Žádné skryté poplatky.'}
            </p>
         </div>
         
@@ -69,14 +75,46 @@ export default function Services({ isDarkMode }) {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {currentProducts.map((product) => (
+              {currentProducts.map((product) => {
+                
+                /* --- LOGIKA TEXTŮ --- */
+                const displayName = lang === 'en' ? (product.name_en || product.name) : product.name;
+                const displayDesc = lang === 'en' ? (product.description_en || product.description) : product.description;
+                const displayTags = lang === 'en' ? (product.tags_en && product.tags_en.length > 0 ? product.tags_en : product.tags) : product.tags;
+
+                /* --- VÝPOČET CENY (PRO ROZSAHY A TEXT) --- */
+                let displayPrice = product.price;
+
+                if (lang === 'en') {
+                    // Regex najde čísla v textu (např. "1 500" i "4 500" zvlášť)
+                    const matches = String(product.price).match(/(\d[\d\s]*\d|\d+)/g);
+
+                    if (matches && matches.length > 0) {
+                        const eurValues = matches.map(match => {
+                            // Odstraníme mezery ("1 500" -> 1500) a převedeme na číslo
+                            const rawNum = parseInt(match.replace(/\s/g, ''), 10);
+                            // Vydělíme kurzem a zaokrouhlíme nahoru
+                            return Math.ceil(rawNum / EXCHANGE_RATE);
+                        });
+
+                        if (eurValues.length === 2) {
+                            // Je to rozsah (např. 63 - 188)
+                            displayPrice = `€${eurValues[0]} – €${eurValues[1]}`;
+                        } else if (eurValues.length === 1) {
+                            // Je to jedno číslo
+                            displayPrice = `€${eurValues[0]}`;
+                        }
+                    }
+                }
+                // Pokud je jazyk CZ, zůstane původní text z databáze ("1 500 – 4 500 Kč")
+
+                return (
                 <div key={product.id} className={`group relative flex flex-col h-full border rounded-3xl p-8 transition-all duration-300 hover:-translate-y-2 overflow-hidden ${
                   isDarkMode 
                   ? 'bg-[#0f172a] border-white/10 hover:border-blue-500/50 hover:shadow-[0_0_50px_-10px_rgba(59,130,246,0.15)]' 
                   : 'bg-white border-slate-200 shadow-xl shadow-slate-200/50 hover:border-blue-400 hover:shadow-blue-200/50'
                 }`}>
                   
-                  {/* Dekorace na pozadí */}
                   <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl -mr-20 -mt-20 transition pointer-events-none ${isDarkMode ? 'bg-blue-600/5 group-hover:bg-blue-600/10' : 'bg-blue-400/10 group-hover:bg-blue-400/20'}`}></div>
                   
                   <div className="mb-6 relative z-10 flex-1 flex flex-col">
@@ -90,17 +128,17 @@ export default function Services({ isDarkMode }) {
                           </div>
                       </div>
 
-                      <h3 className={`text-2xl font-bold mb-4 tracking-tight group-hover:text-blue-500 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{product.name}</h3>
+                      <h3 className={`text-2xl font-bold mb-4 tracking-tight group-hover:text-blue-500 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{displayName}</h3>
                       
                       <p className={`text-sm leading-relaxed mb-8 border-l-2 pl-4 transition-colors ${
                         isDarkMode ? 'text-slate-400 border-white/5' : 'text-slate-600 border-slate-200'
                       }`}>
-                        {product.description || "Kompletní řešení na míru."}
+                        {displayDesc || (lang === 'en' ? "Complete custom solution." : "Kompletní řešení na míru.")}
                       </p>
 
-                      {product.tags && product.tags.length > 0 && (
+                      {displayTags && displayTags.length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-auto">
-                              {product.tags.map((tag, i) => (
+                              {displayTags.map((tag, i) => (
                                   <span key={i} className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-colors ${
                                     isDarkMode 
                                     ? 'bg-white/5 text-slate-400 border-white/10 group-hover:text-slate-200' 
@@ -115,16 +153,20 @@ export default function Services({ isDarkMode }) {
                   
                   <div className={`mt-8 pt-8 border-t relative z-10 transition-colors ${isDarkMode ? 'border-white/10' : 'border-slate-100'}`}>
                     <div className="mb-8">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Celková investice</p>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+                            {lang === 'en' ? 'Total Investment' : 'Celková investice'}
+                        </p>
                         
-                        <div className="flex flex-row items-baseline gap-1.5 flex-nowrap overflow-hidden">
-                            <span className={`text-2xl xl:text-3xl font-extrabold tracking-tight whitespace-nowrap drop-shadow-sm transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                {product.price}
+                        {/* ZDE BLA ÚPRAVA VELIKOSTI PÍSMA */}
+                        <div className="flex flex-row items-baseline gap-1 flex-nowrap overflow-hidden">
+                            <span className={`text-xl md:text-2xl font-extrabold tracking-tight whitespace-nowrap drop-shadow-sm transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                {displayPrice}
                             </span>
                             
+                            {/* Zobrazíme "/ projekt" jen pokud text obsahuje nějaké číslo */}
                             {/\d/.test(product.price) && (
                                 <span className={`text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                                    / projekt
+                                    {lang === 'en' ? ' / project' : ' / projekt'}
                                 </span>
                             )}
                         </div>
@@ -140,15 +182,15 @@ export default function Services({ isDarkMode }) {
                         }}
                         className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2 group/btn active:scale-95"
                     >
-                      Mám zájem
+                      {t?.button || (lang === 'en' ? "I'm interested" : "Mám zájem")}
                       <ChevronRight className="w-5 h-5 group-hover/btn:translate-x-1 transition" />
                     </button>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
 
-            {/* STRÁNKOVÁNÍ */}
             <div className="flex justify-center items-center gap-6 mt-20">
                 <button 
                     onClick={prevPage} 
@@ -163,7 +205,7 @@ export default function Services({ isDarkMode }) {
                 </button>
                 
                 <span className={`font-mono text-sm tracking-widest transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                    STRANA <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{currentPage}</span> / {totalPages}
+                    {lang === 'en' ? 'PAGE' : 'STRANA'} <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{currentPage}</span> / {totalPages}
                 </span>
                 
                 <button 

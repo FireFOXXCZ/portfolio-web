@@ -1,31 +1,15 @@
-import { X, Save, AlertTriangle, Upload, Clock as ClockIcon, Loader2, Inbox, Archive, Clock, CheckSquare, Folder, Star, Tag, Mail, Bell } from 'lucide-react'
-import { useEffect } from 'react'
+import { X, Save, AlertTriangle, Upload, Clock as ClockIcon, Loader2, Inbox, Archive, Clock, CheckSquare, Folder, Star, Tag, Mail, Bell, Languages } from 'lucide-react'
+import { useEffect, useState } from 'react' // Added useState
 
 /* --- HLAVNÍ FORMULÁŘOVÝ MODÁL --- */
 export function FormModal({ 
-    isFormOpen, 
-    setIsFormOpen, 
-    activeTab, 
-    formData, 
-    setFormData, 
-    isEditing, 
-    handleSave, 
-    isSubmitting, 
-    isUploading, 
-    handleFileInputChange, 
-    isDragging, 
-    handleDragOver, 
-    handleDragLeave, 
-    handleDrop, 
-    tagInput, 
-    setTagInput, 
-    removeImage, 
-    removeTag, 
-    confirmDel, 
-    toLocalISOString 
+    isFormOpen, setIsFormOpen, activeTab, formData, setFormData, isEditing, handleSave, 
+    isSubmitting, isUploading, handleFileInputChange, isDragging, handleDragOver, 
+    handleDragLeave, handleDrop, tagInput, setTagInput, removeImage, removeTag, 
+    confirmDel, toLocalISOString 
 }) {
+    const [formLang, setFormLang] = useState('cz'); // Local state for switching tabs
 
-    // LOGIKA PRO PASTE (Ctrl+V) - Screenshoty ze schránky
     useEffect(() => {
         const handlePaste = (e) => {
             if (!isFormOpen || activeTab === 'calendar' || activeTab === 'services' || activeTab === 'demos') return;
@@ -33,7 +17,6 @@ export function FormModal({
                 handleFileInputChange(e);
             }
         };
-
         window.addEventListener('paste', handlePaste);
         return () => window.removeEventListener('paste', handlePaste);
     }, [isFormOpen, activeTab, handleFileInputChange]);
@@ -50,25 +33,49 @@ export function FormModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-0 md:p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsFormOpen(false)}></div>
             <div className="bg-[#0f172a] border border-white/10 rounded-none md:rounded-3xl w-full md:max-w-3xl h-full md:h-auto md:max-h-[90vh] relative z-10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 ring-1 ring-white/10">
-                <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#162032]">
-                    <h3 className="text-xl font-bold text-white">{isEditing ? 'Upravit záznam' : 'Nový záznam'}</h3>
+                <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#162032] shrink-0">
+                    <div className="flex items-center gap-4">
+                        <h3 className="text-xl font-bold text-white">{isEditing ? 'Upravit záznam' : 'Nový záznam'}</h3>
+                        
+                        {/* JAZYKOVÝ PŘEPÍNAČ JEN PRO BILINGVNÍ OBSAH */}
+                        {['projects', 'services', 'demos'].includes(activeTab) && (
+                            <div className="flex bg-[#0f172a] rounded-lg p-1 border border-white/10">
+                                <button type="button" onClick={() => setFormLang('cz')} className={`px-3 py-1 text-xs font-bold rounded-md transition ${formLang === 'cz' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>CZ</button>
+                                <button type="button" onClick={() => setFormLang('en')} className={`px-3 py-1 text-xs font-bold rounded-md transition ${formLang === 'en' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>EN</button>
+                            </div>
+                        )}
+                    </div>
                     <button onClick={() => setIsFormOpen(false)} className="p-2 text-slate-400 hover:text-white transition"><X/></button>
                 </div>
                 
                 <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1">
                     <form id="dataForm" onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Společný Název */}
-                        <div className="space-y-2 md:col-span-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Název</label>
-                            <input type="text" required value={formData.title || ''} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 outline-none text-white transition"/>
-                        </div>
                         
-                        {/* KALENDÁŘ SPECIFICKÁ POLE */}
+                        {/* NÁZEV / TITULEK (Podle jazyka) */}
+                        {activeTab !== 'calendar' && (
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1 flex items-center gap-2">
+                                    {formLang === 'cz' ? <><img src="https://flagcdn.com/w20/cz.png" width="16" /> Název</> : <><img src="https://flagcdn.com/w20/gb.png" width="16" /> Title</>}
+                                </label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={formLang === 'cz' ? (formData.title || '') : (formData.title_en || '')} 
+                                    onChange={e => setFormData({ ...formData, [formLang === 'cz' ? 'title' : 'title_en']: e.target.value })} 
+                                    className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 outline-none text-white transition"
+                                />
+                            </div>
+                        )}
+                        
                         {activeTab === 'calendar' ? (
                              <>
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Událost</label>
+                                    <input type="text" required value={formData.title || ''} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 text-white"/>
+                                </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1 flex items-center gap-2"><ClockIcon className="w-3 h-3"/> Začátek</label>
                                     <input type="datetime-local" required value={formatForInput(formData.start_time)} onChange={e => setFormData({...formData, start_time: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 outline-none text-white [color-scheme:dark]"/>
@@ -77,60 +84,60 @@ export function FormModal({
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1 flex items-center gap-2"><ClockIcon className="w-3 h-3"/> Konec</label>
                                     <input type="datetime-local" required value={formatForInput(formData.end_time)} onChange={e => setFormData({...formData, end_time: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 outline-none text-white [color-scheme:dark]"/>
                                 </div>
-                                <div className="space-y-2 md:col-span-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Typ směny</label>
-                                    <div className="flex gap-4">
-                                        <button type="button" onClick={() => {
-                                            const d = new Date(formData.start_time || new Date()); d.setHours(6,0,0,0);
-                                            const e = new Date(d); e.setHours(18,0,0,0);
-                                            setFormData({...formData, type: 'morning', title: 'Ranní', start_time: toLocalISOString(d), end_time: toLocalISOString(e)});
-                                        }} className={`flex-1 p-3 rounded-xl border ${formData.type === 'morning' ? 'bg-amber-500/20 border-amber-500 text-amber-300' : 'bg-[#1e293b] border-white/10 text-slate-400'}`}>☀️ Ranní</button>
-                                        <button type="button" onClick={() => {
-                                            const d = new Date(formData.start_time || new Date()); d.setHours(18,0,0,0);
-                                            const nextDay = new Date(d); nextDay.setDate(nextDay.getDate() + 1); nextDay.setHours(6,0,0,0);
-                                            setFormData({...formData, type: 'night', title: 'Noční', start_time: toLocalISOString(d), end_time: toLocalISOString(nextDay)});
-                                        }} className={`flex-1 p-3 rounded-xl border ${formData.type === 'night' ? 'bg-blue-500/20 border-blue-500 text-blue-300' : 'bg-[#1e293b] border-white/10 text-slate-400'}`}>🌙 Noční</button>
-                                        <button type="button" onClick={() => setFormData({...formData, type: 'off', title: 'Volno'})} className={`flex-1 p-3 rounded-xl border ${formData.type === 'off' ? 'bg-green-500/20 border-green-500 text-green-300' : 'bg-[#1e293b] border-white/10 text-slate-400'}`}>🌴 Volno</button>
-                                    </div>
-                                </div>
                              </>
                         ) : activeTab === 'services' ? (
-                            /* SLUŽBY SPECIFICKÁ POLE */
                             <>
                                 <div className="space-y-2 md:col-span-2">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Cena (Kč)</label>
                                     <input type="text" value={formData.price || ''} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 outline-none text-white font-mono"/>
                                 </div>
+                                {/* TAGS (BILINGUAL) */}
                                 <div className="space-y-2 md:col-span-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Tagy (Enter)</label>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1 flex items-center gap-2">
+                                        {formLang === 'cz' ? 'Tagy' : 'Tags'} (Enter)
+                                    </label>
                                     <div className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-3 flex flex-wrap gap-2 items-center min-h-[60px]">
-                                        {formData.tags?.map((tag, index) => (<span key={index} className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 font-medium">{tag}<button type="button" onClick={() => removeTag(tag)}><X className="w-3 h-3"/></button></span>))}
-                                        <input type="text" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (tagInput.trim()) { setFormData({...formData, tags: [...(formData.tags || []), tagInput.trim()]}); setTagInput('') } } }} className="bg-transparent outline-none text-white flex-1 h-8 placeholder:text-slate-600" placeholder="Přidat tag..."/>
+                                        {(formLang === 'cz' ? formData.tags : (formData.tags_en || [])).map((tag, index) => (
+                                            <span key={index} className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 font-medium">
+                                                {tag}
+                                                <button type="button" onClick={() => removeTag(tag, formLang)}><X className="w-3 h-3"/></button>
+                                            </span>
+                                        ))}
+                                        <input 
+                                            type="text" 
+                                            value={tagInput} 
+                                            onChange={e => setTagInput(e.target.value)} 
+                                            onKeyDown={(e) => { 
+                                                if (e.key === 'Enter') { 
+                                                    e.preventDefault(); 
+                                                    if (tagInput.trim()) { 
+                                                        const field = formLang === 'cz' ? 'tags' : 'tags_en';
+                                                        setFormData({ ...formData, [field]: [...(formData[field] || []), tagInput.trim()] }); 
+                                                        setTagInput('') 
+                                                    } 
+                                                } 
+                                            }} 
+                                            className="bg-transparent outline-none text-white flex-1 h-8" 
+                                            placeholder={formLang === 'cz' ? "Přidat..." : "Add..."}
+                                        />
                                     </div>
                                 </div>
                             </>
                         ) : activeTab === 'demos' ? (
-                            /* DEMO SPECIFICKÁ POLE */
                             <div className="space-y-2 md:col-span-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">URL Adresa</label>
                                 <input type="text" required value={formData.url || ''} onChange={e => setFormData({...formData, url: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 outline-none text-white"/>
                             </div>
                         ) : (
-                            /* PROJEKTY SPECIFICKÁ POLE (S TAGY) */
+                            /* PROJECTS SPECIFIC (SHARED IMAGES, SEPARATE TAGS) */
                             <div className="space-y-6 md:col-span-2">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Galerie (Drag & Drop nebo Ctrl+V)</label>
-                                    <div 
-                                        onDragOver={handleDragOver}
-                                        onDragLeave={handleDragLeave}
-                                        onDrop={handleDrop}
-                                        className={`relative border-2 border-dashed rounded-2xl p-10 transition-all flex flex-col items-center justify-center gap-3 ${isDragging ? 'border-indigo-500 bg-indigo-500/10 scale-[1.02]' : 'border-white/10 bg-[#1e293b] hover:bg-white/5'}`}
-                                    >
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Galerie (Shared)</label>
+                                    <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} className={`relative border-2 border-dashed rounded-2xl p-10 transition-all flex flex-col items-center justify-center gap-3 ${isDragging ? 'border-indigo-500 bg-indigo-500/10 scale-[1.01]' : 'border-white/10 bg-[#1e293b] hover:bg-white/5'}`}>
                                         <input type="file" multiple onChange={handleFileInputChange} className="absolute inset-0 opacity-0 cursor-pointer" id="file-upload" accept="image/*" />
                                         {isUploading ? <Loader2 className="animate-spin w-10 h-10 text-indigo-500"/> : <Upload className={`w-10 h-10 ${isDragging ? 'text-indigo-400' : 'text-slate-500'}`}/>}
-                                        <p className="font-medium text-slate-300 text-center pointer-events-none">Klikni, přetáhni soubory nebo vlož screenshot (Ctrl+V)</p>
+                                        <p className="font-medium text-slate-300 text-center pointer-events-none">Klikni nebo přetáhni soubory</p>
                                     </div>
-
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mt-4">
                                         {formData.images?.map((img, index) => (
                                           <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group bg-[#1e293b]">
@@ -140,23 +147,50 @@ export function FormModal({
                                         ))}
                                     </div>
                                 </div>
-
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Tagy projektu (např. React, SEO, Design)</label>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1 flex items-center gap-2">
+                                        {formLang === 'cz' ? <><img src="https://flagcdn.com/w20/cz.png" width="16" /> Tagy</> : <><img src="https://flagcdn.com/w20/gb.png" width="16" /> Tags</>}
+                                    </label>
                                     <div className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-3 flex flex-wrap gap-2 items-center min-h-[60px]">
-                                        {formData.tags?.map((tag, index) => (
-                                            <span key={index} className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 font-medium">{tag}<button type="button" onClick={() => removeTag(tag)}><X className="w-3 h-3"/></button></span>
+                                        {(formLang === 'cz' ? formData.tags : (formData.tags_en || [])).map((tag, index) => (
+                                            <span key={index} className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 font-medium">
+                                                {tag}
+                                                <button type="button" onClick={() => removeTag(tag, formLang)}><X className="w-3 h-3"/></button>
+                                            </span>
                                         ))}
-                                        <input type="text" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (tagInput.trim()) { setFormData({...formData, tags: [...(formData.tags || []), tagInput.trim()]}); setTagInput('') } } }} className="bg-transparent outline-none text-white flex-1 h-8 placeholder:text-slate-600" placeholder="Přidat tag..."/>
+                                        <input 
+                                            type="text" 
+                                            value={tagInput} 
+                                            onChange={e => setTagInput(e.target.value)} 
+                                            onKeyDown={(e) => { 
+                                                if (e.key === 'Enter') { 
+                                                    e.preventDefault(); 
+                                                    if (tagInput.trim()) { 
+                                                        const field = formLang === 'cz' ? 'tags' : 'tags_en';
+                                                        setFormData({ ...formData, [field]: [...(formData[field] || []), tagInput.trim()] }); 
+                                                        setTagInput('') 
+                                                    } 
+                                                } 
+                                            }} 
+                                            className="bg-transparent outline-none text-white flex-1 h-8" 
+                                            placeholder={formLang === 'cz' ? "React, SEO..." : "React, SEO..."}
+                                        />
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Společný Popis */}
+                        {/* POPIS / DESCRIPTION (BILINGUAL) */}
                         <div className="md:col-span-2 space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Popis / Poznámka</label>
-                            <textarea required={activeTab !== 'calendar'} value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 outline-none text-white h-40 resize-none leading-relaxed"/>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1 flex items-center gap-2">
+                                {formLang === 'cz' ? <><img src="https://flagcdn.com/w20/cz.png" width="16" /> Popis</> : <><img src="https://flagcdn.com/w20/gb.png" width="16" /> Description</>}
+                            </label>
+                            <textarea 
+                                required={activeTab !== 'calendar'} 
+                                value={formLang === 'cz' ? (formData.description || '') : (formData.description_en || '')} 
+                                onChange={e => setFormData({ ...formData, [formLang === 'cz' ? 'description' : 'description_en']: e.target.value })} 
+                                className="w-full bg-[#1e293b] border border-white/10 rounded-xl p-4 focus:border-indigo-500 outline-none text-white h-40 resize-none leading-relaxed"
+                            />
                         </div>
                     </form>
                 </div>
@@ -166,7 +200,7 @@ export function FormModal({
                     {isEditing && (
                         <button type="button" onClick={confirmDel} className="px-6 py-3 bg-red-500/10 text-red-400 rounded-xl font-bold transition mr-auto border border-red-500/20 hover:bg-red-500 hover:text-white">Smazat</button>
                     )}
-                    <button form="dataForm" disabled={isSubmitting || isUploading} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-indigo-500/20 transform hover:scale-[1.02] active:scale-[0.98]">
+                    <button form="dataForm" disabled={isSubmitting || isUploading} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg">
                       {isSubmitting ? <Loader2 className="animate-spin w-5 h-5"/> : <Save className="w-5 h-5"/>} {isEditing ? 'Uložit' : 'Vytvořit'}
                     </button>
                 </div>
@@ -175,16 +209,14 @@ export function FormModal({
     )
 }
 
-/* --- SMAZACÍ MODÁL --- */
+// ... (DeleteModal, FolderModal remain same)
 export function DeleteModal({ isDeleteOpen, setIsDeleteOpen, executeDel, title = "Opravdu smazat?", description = "Tuto akci nelze vrátit zpět." }) {
     if (!isDeleteOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsDeleteOpen(false)}></div>
             <div className="bg-[#0f172a] border border-white/10 rounded-3xl w-full max-w-md relative z-10 shadow-2xl p-8 text-center animate-in zoom-in-95 duration-200">
-                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 ring-4 ring-red-500/5">
-                    <AlertTriangle className="w-10 h-10"/>
-                </div>
+                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 ring-4 ring-red-500/5"><AlertTriangle className="w-10 h-10"/></div>
                 <h3 className="text-2xl font-bold mb-3 text-white">{title}</h3>
                 <p className="text-slate-400 mb-8 leading-relaxed">{description}</p>
                 <div className="flex gap-4 justify-center">
@@ -196,22 +228,9 @@ export function DeleteModal({ isDeleteOpen, setIsDeleteOpen, executeDel, title =
     )
 }
 
-/* --- MODÁL SLOŽEK --- */
 export function FolderModal({ isFolderModalOpen, setIsFolderModalOpen, newFolderName, setNewFolderName, newFolderIcon, setNewFolderIcon, createFolder, isEditing }) {
     if (!isFolderModalOpen) return null;
-
-    const iconList = [
-        { id: 'folder', Icon: Folder },
-        { id: 'inbox', Icon: Inbox },
-        { id: 'archive', Icon: Archive },
-        { id: 'clock', Icon: Clock },
-        { id: 'check', Icon: CheckSquare },
-        { id: 'star', Icon: Star },
-        { id: 'tag', Icon: Tag },
-        { id: 'mail', Icon: Mail },
-        { id: 'bell', Icon: Bell },
-    ];
-
+    const iconList = [ { id: 'folder', Icon: Folder }, { id: 'inbox', Icon: Inbox }, { id: 'archive', Icon: Archive }, { id: 'clock', Icon: Clock }, { id: 'check', Icon: CheckSquare }, { id: 'star', Icon: Star }, { id: 'tag', Icon: Tag }, { id: 'mail', Icon: Mail }, { id: 'bell', Icon: Bell } ];
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsFolderModalOpen(false)}></div>
@@ -236,19 +255,6 @@ export function FolderModal({ isFolderModalOpen, setIsFolderModalOpen, newFolder
                     <button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition shadow-lg shadow-indigo-500/20 text-sm">{isEditing ? 'Uložit' : 'Vytvořit'}</button>
                 </div>
             </form>
-        </div>
-    )
-}
-
-/* --- LIGHTBOX (ZVĚTŠENÍ OBRÁZKU) --- */
-export function Lightbox({ lightboxOpen, setLightboxOpen, lightboxImages, lightboxIndex }) {
-    if (!lightboxOpen) return null;
-    return (
-        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-200" onClick={() => setLightboxOpen(false)}>
-            <button className="absolute top-6 right-6 text-slate-400 hover:text-white p-2 z-50 rounded-full hover:bg-white/10 transition"><X className="w-10 h-10"/></button>
-            <div className="relative w-full h-full flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-                <img src={lightboxImages[lightboxIndex]} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95" />
-            </div>
         </div>
     )
 }

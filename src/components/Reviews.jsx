@@ -3,7 +3,8 @@ import { supabase } from '../supabase'
 import { Star, Quote, ChevronLeft, ChevronRight, User, Briefcase, Send, Loader2, PlusCircle, CheckCircle2, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-export default function Reviews({ isDarkMode }) {
+// PŘIJÍMÁ PROP: t (překlady)
+export default function Reviews({ isDarkMode, t }) {
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   
@@ -55,7 +56,8 @@ export default function Reviews({ isDarkMode }) {
         const { error } = await supabase.from('reviews').insert([formData])
         if (error) throw error
         
-        showToast('Děkuji! Recenze byla odeslána a čeká na schválení.', 'success')
+        // POUŽITÍ PŘEKLADU PRO TOAST
+        showToast(t?.toast_success || 'Děkuji!', 'success')
         
         await fetchReviews()
         setFormData({ name: '', role: '', text: '', stars: 5 })
@@ -63,7 +65,7 @@ export default function Reviews({ isDarkMode }) {
         setCurrentPage(1)
     } catch (error) {
         console.error(error)
-        showToast('Něco se pokazilo. Zkuste to prosím později.', 'error')
+        showToast(t?.toast_error || 'Chyba', 'error')
     } finally {
         setSubmitting(false)
     }
@@ -83,10 +85,10 @@ export default function Reviews({ isDarkMode }) {
         
         <div className="text-center mb-16">
           <h2 className={`text-3xl md:text-5xl font-bold mb-6 transition-colors ${isDarkMode ? 'bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400' : 'text-slate-900'}`}>
-            Co říkají klienti
+            {t?.title || 'Co říkají klienti'}
           </h2>
           <p className={`max-w-xl mx-auto mb-8 transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-            Reálné zkušenosti lidí, se kterými jsem spolupracoval.
+            {t?.subtitle || 'Reálné zkušenosti.'}
           </p>
           
           <button 
@@ -97,7 +99,10 @@ export default function Reviews({ isDarkMode }) {
                 : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
             }`}
           >
-             {showForm ? <><X className="w-5 h-5" /> Zavřít formulář</> : <><PlusCircle className="w-5 h-5"/> Přidat recenzi</>}
+             {showForm 
+                ? <><X className="w-5 h-5" /> {t?.btn_close || 'Zavřít'}</> 
+                : <><PlusCircle className="w-5 h-5"/> {t?.btn_add || 'Přidat recenzi'}</>
+             }
           </button>
         </div>
 
@@ -113,15 +118,15 @@ export default function Reviews({ isDarkMode }) {
                     onSubmit={handleSubmit}
                 >
                     <h3 className={`text-xl font-bold mb-6 flex items-center gap-2 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                      Napsat hodnocení <Star className="w-5 h-5 text-yellow-500 fill-yellow-500"/>
+                      {t?.form_title} <Star className="w-5 h-5 text-yellow-500 fill-yellow-500"/>
                     </h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase ml-1">Jméno *</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase ml-1">{t?.label_name} *</label>
                             <div className="relative mt-1">
                                 <User className="absolute left-3 top-3.5 w-4 h-4 text-slate-500"/>
-                                <input required type="text" placeholder="Jan Novák" 
+                                <input required type="text" placeholder={t?.placeholder_name} 
                                     className={`w-full border rounded-xl py-3 pl-10 pr-4 outline-none transition-all ${
                                       isDarkMode ? 'bg-[#0f172a] border-white/10 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-600'
                                     }`} 
@@ -130,10 +135,10 @@ export default function Reviews({ isDarkMode }) {
                             </div>
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase ml-1">Role / Firma</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase ml-1">{t?.label_role}</label>
                             <div className="relative mt-1">
                                 <Briefcase className="absolute left-3 top-3.5 w-4 h-4 text-slate-500"/>
-                                <input type="text" placeholder="CEO, Firma s.r.o." 
+                                <input type="text" placeholder={t?.placeholder_role} 
                                     className={`w-full border rounded-xl py-3 pl-10 pr-4 outline-none transition-all ${
                                       isDarkMode ? 'bg-[#0f172a] border-white/10 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-600'
                                     }`} 
@@ -144,7 +149,7 @@ export default function Reviews({ isDarkMode }) {
                     </div>
 
                     <div className="mb-6">
-                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Hodnocení</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">{t?.label_rating}</label>
                         <div className="flex gap-2 mt-2">
                             {[1,2,3,4,5].map(star => (
                                 <button key={star} type="button" onClick={() => setFormData({...formData, stars: star})} className="focus:outline-none transition transform hover:scale-110">
@@ -155,8 +160,8 @@ export default function Reviews({ isDarkMode }) {
                     </div>
 
                     <div className="mb-6">
-                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Recenze *</label>
-                        <textarea required placeholder="Jak se vám spolupracovalo..." 
+                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">{t?.label_text} *</label>
+                        <textarea required placeholder={t?.placeholder_text} 
                             className={`w-full mt-1 border rounded-xl p-4 outline-none h-32 resize-none transition-all ${
                               isDarkMode ? 'bg-[#0f172a] border-white/10 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-600'
                             }`}
@@ -166,7 +171,7 @@ export default function Reviews({ isDarkMode }) {
 
                     <button disabled={submitting} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition disabled:opacity-50">
                         {submitting ? <Loader2 className="animate-spin w-5 h-5"/> : <Send className="w-5 h-5"/>}
-                        {submitting ? 'Odesílám...' : 'Odeslat recenzi'}
+                        {submitting ? t?.btn_sending : t?.btn_send}
                     </button>
                 </motion.form>
             )}
@@ -178,7 +183,7 @@ export default function Reviews({ isDarkMode }) {
              </div>
         ) : reviews.length === 0 ? (
             <div className={`text-center py-10 border border-dashed rounded-3xl transition-colors ${isDarkMode ? 'text-slate-500 border-white/10' : 'text-slate-400 border-slate-300'}`}>
-                Zatím žádné recenze. Buďte první!
+                {t?.empty_state}
             </div>
         ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 min-h-[300px]">
@@ -214,7 +219,9 @@ export default function Reviews({ isDarkMode }) {
                     </div>
                     <div>
                       <h4 className={`font-bold text-sm transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{review.name}</h4>
-                      {review.role && <p className={`text-xs transition-colors ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{review.role}</p>}
+                      <p className={`text-xs transition-colors ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                        {review.role || (t?.role_default || 'Klient')}
+                      </p>
                     </div>
                   </div>
                 </motion.div>
@@ -269,7 +276,7 @@ export default function Reviews({ isDarkMode }) {
                 
                 <div className="pr-4">
                     <h4 className={`font-bold text-sm ${toast.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                        {toast.type === 'success' ? 'Odesláno' : 'Chyba'}
+                        {toast.type === 'success' ? (lang === 'en' ? 'Success' : 'Odesláno') : (lang === 'en' ? 'Error' : 'Chyba')}
                     </h4>
                     <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{toast.message}</p>
                 </div>

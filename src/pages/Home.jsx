@@ -9,7 +9,8 @@ import Reviews from '../components/Reviews'
 import GlobalAvailability from '../components/GlobalAvailability' 
 import LiveDemos from '../components/LiveDemos'
 
-function Home() {
+// Přidány props: lang, toggleLang, t
+function Home({ lang, toggleLang, t }) {
   const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
@@ -23,29 +24,36 @@ function Home() {
   };
 
   return (
-    // ODSTRANĚNO 'text-white' z hlavního divu, aby mohl text měnit barvu
     <div className={`${isDarkMode ? 'dark bg-[#0f172a]' : 'light bg-slate-50'} min-h-screen font-sans transition-colors duration-500 overflow-x-hidden relative`}>
       
-      {/* Dynamické Pozadí */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
         <div className={`absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full blur-[120px] transition-colors duration-700 ${isDarkMode ? 'bg-blue-600/20' : 'bg-blue-400/10'}`}></div>
         <div className={`absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full blur-[120px] transition-colors duration-700 ${isDarkMode ? 'bg-purple-600/20' : 'bg-purple-400/10'}`}></div>
       </div>
 
-      <Navbar isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+      {/* Navbar potřebuje vše pro přepínač jazyků */}
+      <Navbar 
+        isDarkMode={isDarkMode} 
+        toggleTheme={toggleTheme} 
+        lang={lang} 
+        toggleLang={toggleLang} 
+        t={t.nav} 
+      />
       
-      {/* Vnitřní obsah s dynamickou barvou textu */}
       <div className={`${isDarkMode ? 'text-white' : 'text-slate-900'} transition-colors duration-500`}>
-        <Hero isDarkMode={isDarkMode} />
-        <Services isDarkMode={isDarkMode} />
-        <Portfolio isDarkMode={isDarkMode} />
-        <LiveDemos isDarkMode={isDarkMode} />
-        <Reviews isDarkMode={isDarkMode} /> 
-        <Contact isDarkMode={isDarkMode} />
-        <Footer isDarkMode={isDarkMode} />
+        {/* Hero potřebuje své překlady */}
+        <Hero isDarkMode={isDarkMode} t={t.hero} />
+        
+        {/* Tady budeš postupně přidávat t.services, t.portfolio atd. */}
+        <Services isDarkMode={isDarkMode} t={t.services} lang={lang} />
+        <Portfolio isDarkMode={isDarkMode} t={t.projects} lang={lang} />
+        <LiveDemos isDarkMode={isDarkMode} t={t.demos} lang={lang} />
+        <Reviews isDarkMode={isDarkMode} t={t.reviews} />
+        <Contact isDarkMode={isDarkMode} t={t.contact} />
+        <Footer isDarkMode={isDarkMode} t={t.footer} />
       </div>
 
-      <GlobalAvailability isDarkMode={isDarkMode} /> 
+      <GlobalAvailability isDarkMode={isDarkMode} lang={lang} />
     </div>
   )
 }

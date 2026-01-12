@@ -9,7 +9,7 @@ import Header from '../components/admin/Header'
 import Calendar from '../components/admin/Calendar'
 import Settings from '../components/admin/Settings'
 import { MessagesList, DemosList, ServicesTable, ProjectsGrid, ReviewsList } from '../components/admin/Content'
-import { FormModal, DeleteModal, FolderModal, Lightbox } from '../components/admin/Modals'
+import { FormModal, DeleteModal, FolderModal } from '../components/admin/Modals' // Lightbox přesunut do Content.jsx
 
 export default function Admin() {
   const navigate = useNavigate()
@@ -51,12 +51,20 @@ export default function Admin() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const [lightboxOpen, setLightboxOpen] = useState(false)
-  const [lightboxImages, setLightboxImages] = useState([])
-  const [lightboxIndex, setLightboxIndex] = useState(0)
   const [tagInput, setTagInput] = useState('')
 
-  const initialFormState = { id: null, title: '', price: '', description: '', images: [], tags: [], start_time: '', end_time: '', type: 'morning', url: '' }
+  // UPDATED INITIAL STATE FOR BILINGUAL SUPPORT
+  const initialFormState = { 
+    id: null, 
+    title: '', title_en: '', 
+    price: '', 
+    description: '', description_en: '', 
+    images: [], 
+    tags: [], tags_en: [], 
+    start_time: '', end_time: '', 
+    type: 'morning', 
+    url: '' 
+  }
   const [formData, setFormData] = useState(initialFormState)
 
   const toLocalISOString = (date) => {
@@ -261,16 +269,33 @@ export default function Admin() {
   const handleSave = async (e) => {
     e.preventDefault(); setIsSubmitting(true);
     let table = activeTab === 'services' ? 'products' : activeTab === 'calendar' ? 'calendar_events' : activeTab === 'demos' ? 'live_demos' : 'projects';
+    
+    // UPDATED PAYLOAD CONSTRUCTION WITH ENGLISH FIELDS
     let payload = {};
     if (activeTab === 'calendar') {
         payload = { title: formData.title, description: formData.description, start_time: new Date(formData.start_time).toISOString(), end_time: new Date(formData.end_time).toISOString(), type: formData.type };
     } else if (activeTab === 'services') {
-        payload = { name: formData.title, description: formData.description, price: formData.price, tags: formData.tags };
+        payload = { 
+            name: formData.title, name_en: formData.title_en,
+            description: formData.description, description_en: formData.description_en,
+            price: formData.price, 
+            tags: formData.tags, tags_en: formData.tags_en 
+        };
     } else if (activeTab === 'demos') {
-        payload = { title: formData.title, description: formData.description, url: formData.url };
+        payload = { 
+            title: formData.title, title_en: formData.title_en,
+            description: formData.description, description_en: formData.description_en,
+            url: formData.url 
+        };
     } else {
-        payload = { title: formData.title, description: formData.description, images: formData.images, tags: formData.tags };
+        payload = { 
+            title: formData.title, title_en: formData.title_en,
+            description: formData.description, description_en: formData.description_en,
+            images: formData.images, 
+            tags: formData.tags, tags_en: formData.tags_en
+        };
     }
+
     const q = isEditing ? supabase.from(table).update(payload).eq('id', formData.id) : supabase.from(table).insert([payload]);
     const { error } = await q;
     if (!error) { setIsFormOpen(false); setRefreshTrigger(p => p+1); showToast("Uloženo"); }
@@ -289,8 +314,18 @@ export default function Admin() {
   const openEdit = (item) => {
     if (activeTab === 'calendar') {
         setFormData({ ...item, start_time: toLocalISOString(new Date(item.start_time)), end_time: toLocalISOString(new Date(item.end_time)) });
+    } else if (activeTab === 'services') {
+        setFormData({ 
+            ...item, 
+            title: item.name, title_en: item.name_en, // Mapping 'name' to 'title' for form consistency
+            tags: item.tags || [], tags_en: item.tags_en || []
+        });
     } else {
-        setFormData({ ...item, title: item.title || item.name });
+        setFormData({ 
+            ...item, 
+            title: item.title, title_en: item.title_en,
+            tags: item.tags || [], tags_en: item.tags_en || []
+        });
     }
     setIsEditing(true); setIsFormOpen(true);
   }
@@ -336,7 +371,7 @@ export default function Admin() {
         ) : (
           <>
             {activeTab === 'messages' && <MessagesList items={items} allowDrag={allowDrag} setAllowDrag={setAllowDrag} handleDragStart={handleDragStart} markAsRead={markAsRead} confirmDel={(i) => { setItemToDelete(i); setIsDeleteOpen(true); }} copyToClipboard={copyToClipboard} />}
-            {activeTab === 'projects' && <ProjectsGrid items={items} openEdit={openEdit} confirmDel={(i) => { setItemToDelete(i); setIsDeleteOpen(true); }} openLightbox={(imgs) => { setLightboxImages(imgs); setLightboxOpen(true); }} />}
+            {activeTab === 'projects' && <ProjectsGrid items={items} openEdit={openEdit} confirmDel={(i) => { setItemToDelete(i); setIsDeleteOpen(true); }} />}
             {activeTab === 'services' && <ServicesTable items={items} openEdit={openEdit} confirmDel={(i) => { setItemToDelete(i); setIsDeleteOpen(true); }} />}
             {activeTab === 'demos' && <DemosList items={items} openEdit={openEdit} confirmDel={(i) => { setItemToDelete(i); setIsDeleteOpen(true); }} />}
             {activeTab === 'reviews' && <ReviewsList items={items} toggleReviewStatus={toggleReviewStatus} confirmDel={(i) => { setItemToDelete(i); setIsDeleteOpen(true); }} />}
@@ -351,7 +386,13 @@ export default function Admin() {
         isEditing={isEditing} handleSave={handleSave} isSubmitting={isSubmitting} isUploading={isUploading} 
         handleFileInputChange={handleFileInputChange} toLocalISOString={toLocalISOString}
         tagInput={tagInput} setTagInput={setTagInput} removeImage={(idx) => setFormData(p => ({...p, images: p.images.filter((_,i) => i!==idx)}))}
-        removeTag={(t) => setFormData(p => ({...p, tags: p.tags.filter(tag => tag!==t)}))} 
+        
+        /* UPDATE TAG REMOVAL FOR BOTH LANGS */
+        removeTag={(t, lang = 'cz') => {
+            if (lang === 'en') setFormData(p => ({...p, tags_en: p.tags_en.filter(tag => tag!==t)}));
+            else setFormData(p => ({...p, tags: p.tags.filter(tag => tag!==t)}));
+        }} 
+        
         confirmDel={() => { setItemToDelete(formData); setIsDeleteOpen(true); }}
         isDragging={isDragging} 
         handleDragOver={(e) => {e.preventDefault(); setIsDragging(true)}} 
@@ -368,7 +409,6 @@ export default function Admin() {
         newFolderIcon={newFolderIcon} setNewFolderIcon={setNewFolderIcon}
         createFolder={handleCreateOrUpdateFolder} isEditing={!!editingFolder}
       />
-      <Lightbox lightboxOpen={lightboxOpen} setLightboxOpen={setLightboxOpen} lightboxImages={lightboxImages} lightboxIndex={lightboxIndex} />
 
       {toast.show && (
         <div className="fixed bottom-10 right-10 border px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-[60] bg-[#1e293b] border-white/10 animate-in fade-in slide-in-from-right-5">

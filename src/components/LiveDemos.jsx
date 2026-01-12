@@ -3,7 +3,8 @@ import { supabase } from '../supabase'
 import { MonitorPlay, ExternalLink, Loader2, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-export default function LiveDemos({ isDarkMode }) {
+// PŘIJÍMÁ PROPS: t (překlady), lang (aktuální jazyk)
+export default function LiveDemos({ isDarkMode, t, lang }) {
   const [demos, setDemos] = useState([])
   const [loading, setLoading] = useState(true)
   
@@ -39,7 +40,7 @@ export default function LiveDemos({ isDarkMode }) {
   if (!loading && demos.length === 0) return null
 
   return (
-    <section id="livedemos" className="py-20 relative overflow-hidden transition-colors duration-500">
+    <section id="demos" className="py-20 relative overflow-hidden transition-colors duration-500">
       {/* Pozadí záře */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl pointer-events-none">
           <div className={`absolute top-[20%] right-[10%] w-[500px] h-[500px] rounded-full blur-[100px] transition-opacity duration-500 ${isDarkMode ? 'bg-indigo-600/10 opacity-30' : 'bg-indigo-400/5 opacity-20'}`}></div>
@@ -48,10 +49,10 @@ export default function LiveDemos({ isDarkMode }) {
       <div className="container mx-auto px-6 relative z-10">
         <div className="text-center mb-16">
           <h2 className={`text-3xl md:text-4xl font-bold mb-4 tracking-tight transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-            Live <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-500">Demos</span>
+            {t?.title?.split(' ')[0] || 'Live'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-500">{t?.title?.split(' ')[1] || 'Demos'}</span>
           </h2>
           <p className={`max-w-2xl mx-auto transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-            Ukázky živých projektů a aplikací, které si můžete ihned vyzkoušet.
+            {t?.subtitle || 'Ukázky živých projektů a aplikací, které si můžete ihned vyzkoušet.'}
           </p>
         </div>
 
@@ -66,6 +67,10 @@ export default function LiveDemos({ isDarkMode }) {
                     if (isLocalhost && finalUrl.endsWith('/') && !finalUrl.includes('index.html')) {
                         finalUrl += 'index.html';
                     }
+
+                    /* --- LOGIKA PŘEPÍNÁNÍ JAZYKA --- */
+                    const displayTitle = lang === 'en' ? (demo.title_en || demo.title) : demo.title;
+                    const displayDesc = lang === 'en' ? (demo.description_en || demo.description) : demo.description;
 
                     return (
                         <motion.div 
@@ -97,9 +102,9 @@ export default function LiveDemos({ isDarkMode }) {
                                 </a>
                             </div>
 
-                            <h3 className={`text-xl font-bold mb-2 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{demo.title}</h3>
+                            <h3 className={`text-xl font-bold mb-2 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{displayTitle}</h3>
                             <p className={`text-sm leading-relaxed mb-6 flex-1 transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                {demo.description}
+                                {displayDesc}
                             </p>
 
                             <a 
@@ -112,7 +117,7 @@ export default function LiveDemos({ isDarkMode }) {
                                     : 'bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700'
                                 }`}
                             >
-                                Spustit Demo <ArrowRight className="w-4 h-4" />
+                                {t?.view_live || 'Spustit Demo'} <ArrowRight className="w-4 h-4" />
                             </a>
                         </motion.div>
                     )

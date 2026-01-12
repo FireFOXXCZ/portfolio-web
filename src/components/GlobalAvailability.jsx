@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon, Clock, Briefcase } from 'lucide-react'
 
-export default function GlobalAvailability({ isDarkMode }) {
+// PŘIJÍMÁ PROPS: t (překlady - volitelné), lang (jazyk)
+export default function GlobalAvailability({ isDarkMode, t, lang }) {
   const [isOpen, setIsOpen] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState([])
@@ -48,7 +49,15 @@ export default function GlobalAvailability({ isDarkMode }) {
       const day = new Date(date.getFullYear(), date.getMonth(), 1).getDay()
       return day === 0 ? 6 : day - 1
   }
-  const monthNames = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"]
+  
+  // PŘEKLAD MĚSÍCŮ A DNŮ
+  const monthNames = lang === 'en' 
+    ? ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    : ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"];
+
+  const dayNames = lang === 'en'
+    ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    : ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
 
   const renderCalendarDays = () => {
     const daysInMonth = getDaysInMonth(currentDate)
@@ -103,8 +112,11 @@ export default function GlobalAvailability({ isDarkMode }) {
   }
 
   const getStatusText = () => {
-      if (!currentEvent) return 'Teď: Volno'
-      return `Teď: ${currentEvent.title}`
+      const prefix = lang === 'en' ? 'Now:' : 'Teď:';
+      if (!currentEvent) return `${prefix} ${lang === 'en' ? 'Available' : 'Volno'}`
+      // Pokud nemáme překlady v DB pro calendar events, použijeme title (zatím)
+      // V budoucnu můžeš přidat title_en do tabulky calendar_events stejně jako u jiných tabulek
+      return `${prefix} ${currentEvent.title}`
   }
 
   return (
@@ -143,8 +155,10 @@ export default function GlobalAvailability({ isDarkMode }) {
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-500"><CalendarIcon className="w-5 h-5"/></div>
                             <div>
-                                <h3 className="text-lg font-bold">Můj Rozvrh</h3>
-                                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Kdy pracuji a kdy mám volno</p>
+                                <h3 className="text-lg font-bold">{lang === 'en' ? 'My Schedule' : 'Můj Rozvrh'}</h3>
+                                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    {lang === 'en' ? 'When I work and when I\'m free' : 'Kdy pracuji a kdy mám volno'}
+                                </p>
                             </div>
                         </div>
                         <button onClick={() => setIsOpen(false)} className={`p-2 rounded-full transition ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-slate-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-500'}`}><X className="w-5 h-5"/></button>
@@ -158,22 +172,22 @@ export default function GlobalAvailability({ isDarkMode }) {
                         </div>
 
                         <div className="flex gap-3 justify-center mb-4 text-[10px] uppercase font-bold text-slate-500">
-                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Ranní</div>
-                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Noční</div>
-                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500"></span> Volno</div>
+                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500"></span> {lang === 'en' ? 'Morning' : 'Ranní'}</div>
+                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500"></span> {lang === 'en' ? 'Night' : 'Noční'}</div>
+                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500"></span> {lang === 'en' ? 'Free' : 'Volno'}</div>
                         </div>
 
                         <div className="grid grid-cols-7 gap-1 mb-1 font-bold text-[10px] text-slate-400 text-center uppercase">
-                            {['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'].map(day => <div key={day}>{day}</div>)}
+                            {dayNames.map(day => <div key={day}>{day}</div>)}
                         </div>
                         <div className="grid grid-cols-7 gap-1">
-                            {loading ? <div className="col-span-7 py-10 text-center text-slate-500 text-xs">Načítám...</div> : renderCalendarDays()}
+                            {loading ? <div className="col-span-7 py-10 text-center text-slate-500 text-xs">{lang === 'en' ? 'Loading...' : 'Načítám...'}</div> : renderCalendarDays()}
                         </div>
 
                         <div className={`mt-6 p-4 rounded-xl border ${isDarkMode ? 'bg-[#1e293b]/50 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
                             <div className="flex items-center gap-3 mb-2">
                                 <Clock className="w-4 h-4 text-indigo-500"/>
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Právě teď</span>
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{lang === 'en' ? 'Right Now' : 'Právě teď'}</span>
                             </div>
                             {currentEvent ? (
                                 <div>
@@ -181,7 +195,7 @@ export default function GlobalAvailability({ isDarkMode }) {
                                     <p className="text-sm text-slate-500">{new Date(currentEvent.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - {new Date(currentEvent.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
                                 </div>
                             ) : (
-                                <p className="text-green-600 font-bold text-lg">Mám volno</p>
+                                <p className="text-green-600 font-bold text-lg">{lang === 'en' ? 'I am available' : 'Mám volno'}</p>
                             )}
                         </div>
                     </div>
@@ -192,7 +206,7 @@ export default function GlobalAvailability({ isDarkMode }) {
                             const el = document.getElementById('kontakt');
                             if(el) el.scrollIntoView({behavior: 'smooth'});
                         }} className="flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition shadow-lg">
-                           <Briefcase className="w-4 h-4"/> Domluvit spolupráci
+                           <Briefcase className="w-4 h-4"/> {lang === 'en' ? 'Let\'s Collaborate' : 'Domluvit spolupráci'}
                         </button>
                     </div>
                 </div>
