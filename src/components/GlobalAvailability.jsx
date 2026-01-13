@@ -111,11 +111,24 @@ export default function GlobalAvailability({ isDarkMode, t, lang }) {
       return 'bg-slate-500'
   }
 
+  // --- ZDE JE OPRAVA ---
   const getStatusText = () => {
       const prefix = lang === 'en' ? 'Now:' : 'Teď:';
-      if (!currentEvent) return `${prefix} ${lang === 'en' ? 'Available' : 'Volno'}`
-      // Pokud nemáme překlady v DB pro calendar events, použijeme title (zatím)
-      // V budoucnu můžeš přidat title_en do tabulky calendar_events stejně jako u jiných tabulek
+      
+      if (!currentEvent || currentEvent.type === 'off') {
+          return `${prefix} ${lang === 'en' ? 'Available' : 'Volno'}`
+      }
+
+      // Pokud je ranní, natvrdo vypíšeme dlouhý text
+      if (currentEvent.type === 'morning') {
+          return `${prefix} ${lang === 'en' ? 'Morning Shift' : 'Ranní směna'}`
+      }
+
+      // Pokud je noční, natvrdo vypíšeme dlouhý text
+      if (currentEvent.type === 'night') {
+          return `${prefix} ${lang === 'en' ? 'Night Shift' : 'Noční směna'}`
+      }
+
       return `${prefix} ${currentEvent.title}`
   }
 
@@ -171,9 +184,10 @@ export default function GlobalAvailability({ isDarkMode, t, lang }) {
                             <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-2 hover:bg-white/10 rounded-lg"><ChevronRight className="w-5 h-5"/></button>
                         </div>
 
+                        {/* Legenda */}
                         <div className="flex gap-3 justify-center mb-4 text-[10px] uppercase font-bold text-slate-500">
-                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500"></span> {lang === 'en' ? 'Morning' : 'Ranní'}</div>
-                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500"></span> {lang === 'en' ? 'Night' : 'Noční'}</div>
+                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500"></span> {lang === 'en' ? 'Morning Shift' : 'Ranní směna'}</div>
+                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500"></span> {lang === 'en' ? 'Night Shift' : 'Noční směna'}</div>
                              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500"></span> {lang === 'en' ? 'Free' : 'Volno'}</div>
                         </div>
 
@@ -191,7 +205,12 @@ export default function GlobalAvailability({ isDarkMode, t, lang }) {
                             </div>
                             {currentEvent ? (
                                 <div>
-                                    <p className="font-bold text-lg">{currentEvent.title}</p>
+                                    <p className="font-bold text-lg">
+                                        {/* Zde taky použijeme hezčí text, pokud jde o směnu */}
+                                        {currentEvent.type === 'morning' ? (lang === 'en' ? 'Morning Shift' : 'Ranní směna') : 
+                                         currentEvent.type === 'night' ? (lang === 'en' ? 'Night Shift' : 'Noční směna') : 
+                                         currentEvent.title}
+                                    </p>
                                     <p className="text-sm text-slate-500">{new Date(currentEvent.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - {new Date(currentEvent.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
                                 </div>
                             ) : (
